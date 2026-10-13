@@ -403,20 +403,19 @@
     .page-row,.page-controls button,#viewer-toolbar button{background-color:#0c1b2c;border-color:#2b435d}
     #image-fullscreen{background:#020407}
     .setting-row input{accent-color:#527fab}
-    /* Camera-only full viewport; contain keeps the complete sensor frame visible. */
+    /* Continuous camera viewport; video and guide share the same cover geometry. */
     body.camera-active{overflow:hidden;overscroll-behavior:none}
     body.camera-active>header,body.camera-active>div.sticky.bottom-0{visibility:hidden}
     body.camera-active main>:not(#camera-preview){visibility:hidden}
     #camera-preview.camera-live{position:fixed;inset:0;width:100%;height:100vh;height:100dvh;max-width:none;max-height:none;margin:0 !important;border:0;border-radius:0;background:#030508;z-index:60;touch-action:none}
-    #camera-preview.camera-live #camera-stream,#camera-preview.camera-live #camera-overlay-canvas{inset:auto !important;left:0 !important;top:calc(env(safe-area-inset-top,0px) + 64px) !important;width:100% !important;height:calc(100% - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 196px) !important;object-fit:contain !important}
+    #camera-preview.camera-live #camera-stream,#camera-preview.camera-live #camera-overlay-canvas{inset:0 !important;width:100% !important;height:100% !important;object-fit:cover !important}
     #camera-preview.camera-live #auto-capture-indicator{top:calc(env(safe-area-inset-top,0px) + 8px);max-width:360px}
     #camera-preview.camera-live #camera-controls{bottom:calc(env(safe-area-inset-bottom,0px) + 10px);gap:8px;padding:0 16px}
     #camera-preview.camera-live #close-camera-btn,#camera-preview.camera-live #flip-camera-btn{min-width:44px;min-height:44px}
     #camera-preview.camera-live #take-photo-btn{min-width:64px;min-height:64px}
     @media(orientation:landscape) and (max-height:500px){
-      #camera-preview.camera-live #camera-stream,#camera-preview.camera-live #camera-overlay-canvas{top:0 !important;width:calc(100% - 132px - env(safe-area-inset-right,0px)) !important;height:100% !important}
       #camera-preview.camera-live #camera-controls{left:auto;right:calc(env(safe-area-inset-right,0px) + 8px);top:0;bottom:0;width:116px;padding:8px 0;justify-content:center}
-      #camera-preview.camera-live #camera-controls>div:first-child,#camera-preview.camera-live #camera-controls>div:last-child{flex-direction:column;gap:8px}
+      #camera-preview.camera-live #camera-controls>div:nth-child(2),#camera-preview.camera-live #camera-controls>div:last-child{flex-direction:column;gap:8px}
       #camera-preview.camera-live #auto-capture-indicator{left:8px;transform:none;width:calc(100% - 156px - env(safe-area-inset-right,0px));max-width:330px}
     }
   </style>
@@ -457,6 +456,7 @@
         OCR画像をGoogleへ送信します。利用枠により有料。キーは端末保存。
       </p>
       <label class="setting-row"><span>PDF作成時に自動文字認識</span><input id="auto-ocr-setting" type="checkbox"></label>
+      <label class="setting-row"><span>起動時に撮影画面を開く</span><input id="start-camera-setting" type="checkbox"></label>
       <label class="setting-row"><span>手動撮影タイマー</span><select id="manual-delay-setting" style="font-size:16px;background:#102033;color:#eaf1f8;padding:6px;border-radius:6px"><option value="0">なし</option><option value="1">1秒</option><option value="2">2秒</option><option value="3">3秒</option></select></label>
       <label class="setting-row"><span>シャッター音</span><input id="shutter-sound-setting" type="checkbox"></label>
       <label class="setting-row"><span>撮影後に写真保存ボタンを表示</span><input id="photo-save-setting" type="checkbox"></label>
@@ -515,6 +515,7 @@
       </div>
       <!-- Live Camera Controls Overlay -->
       <div id="camera-controls" class="hidden absolute bottom-4 inset-x-0 flex flex-col items-center gap-3 z-30 px-5">
+        <button id="finish-camera-btn" type="button" style="font-size:14px;min-height:36px;padding:6px 14px;border-radius:10px;background:rgba(3,5,8,.85);border:1px solid #507da5;color:#fff">保存して終了（0枚）</button>
         
         <!-- Toggle Mode -->
         <div class="flex items-center bg-black/75 backdrop-blur-md rounded-full p-1 border border-white/20 text-[14px]">
@@ -529,7 +530,7 @@
         <!-- Shutter Buttons -->
         <div class="w-full flex items-center justify-around">
           <button id="close-camera-btn" type="button" aria-label="撮影を閉じる" class="ios-touch w-11 h-11 rounded-full bg-black/60 text-white flex items-center justify-center border border-white/20">
-            <i class="fa-solid fa-xmark text-base"></i>
+            <span style="font-size:14px">終了</span>
           </button>
           <button id="take-photo-btn" type="button" aria-label="シャッター" class="ios-touch w-16 h-16 rounded-full bg-white p-1.5 shadow-2xl flex items-center justify-center border-4 border-indigo-500">
             <div class="w-12 h-12 rounded-full bg-indigo-600 flex items-center justify-center text-white">
@@ -797,13 +798,14 @@
     let sourceWidth = 0, sourceHeight = 0;
     let readyFile = null;
     let recognizedRevision = -1;
-    let appSettings={autoOCR:true,photoSave:false,shutterSound:true,manualDelay:1};
+    let appSettings={autoOCR:true,photoSave:false,shutterSound:true,manualDelay:1,startInCamera:false};
     let ocrFailureRevision=-1,automaticOCRBlockedRevision=-1;
     let ocrInProgress=false,ocrCancelRequested=false;
     let shutterAudio=null,shutterBuffer=null;
     let photoSaveFile=null,photoSaveURL=null;
     let uncroppedImage=null;
     let manualCountdown=false,manualTimerId=null;
+    let cameraCaptureTask=null,cameraFinishRequested=false,cameraCaptureBaseline=null,autoCaptureArmed=true;
     let automaticOCRTask=null;
     const scanPages = [];
     let pageDatabase=null,pageStoreRevision=0,knownStoredPages=new Map();
@@ -860,8 +862,9 @@
     const keyStoreName = 'goodscan_gemini_key_v1:' + new URL('.', location.href).pathname;
     try { apiKeyMemory = localStorage.getItem(keyStoreName) || ''; } catch (_) {}
     const settingsStoreName='goodscan_settings_v1:'+new URL('.',location.href).pathname;
-    try{const saved=JSON.parse(localStorage.getItem(settingsStoreName)||'null');if(saved){if(typeof saved.autoOCR==='boolean')appSettings.autoOCR=saved.autoOCR;if(typeof saved.photoSave==='boolean')appSettings.photoSave=saved.photoSave;if(typeof saved.shutterSound==='boolean')appSettings.shutterSound=saved.shutterSound;if([0,1,2,3].includes(saved.manualDelay))appSettings.manualDelay=saved.manualDelay;}}catch(_){}
+    try{const saved=JSON.parse(localStorage.getItem(settingsStoreName)||'null');if(saved){if(typeof saved.autoOCR==='boolean')appSettings.autoOCR=saved.autoOCR;if(typeof saved.startInCamera==='boolean')appSettings.startInCamera=saved.startInCamera;if(typeof saved.photoSave==='boolean')appSettings.photoSave=saved.photoSave;if(typeof saved.shutterSound==='boolean')appSettings.shutterSound=saved.shutterSound;if([0,1,2,3].includes(saved.manualDelay))appSettings.manualDelay=saved.manualDelay;}}catch(_){}
     document.getElementById('auto-ocr-setting').checked=appSettings.autoOCR;
+    document.getElementById('start-camera-setting').checked=appSettings.startInCamera;
     document.getElementById('photo-save-setting').checked=appSettings.photoSave;
     document.getElementById('shutter-sound-setting').checked=appSettings.shutterSound;
     document.getElementById('manual-delay-setting').value=String(appSettings.manualDelay);
@@ -916,6 +919,7 @@
       busy = value;
       document.querySelectorAll('button').forEach(b => {
         if(b.id.startsWith('viewer-')||b.id==='cancel-ocr-btn')return;
+        if(cameraCaptureTask&&['close-camera-btn','finish-camera-btn'].includes(b.id))return;
         if (!b.dataset.oldDisabled && value) b.dataset.oldDisabled = b.disabled ? 'yes' : 'no';
         if (value) b.disabled = true;
         else if(b.dataset.oldDisabled!==undefined) { b.disabled = b.dataset.oldDisabled === 'yes'; delete b.dataset.oldDisabled; }
@@ -1066,6 +1070,7 @@
     async function startCamera() {
       if (busy || cameraStarting) return;
       prepareShutterSound();
+      cameraFinishRequested=false;autoCaptureArmed=true;cameraCaptureBaseline=null;
       cameraStarting=true;
       stopCamera();
       const token = cameraToken;
@@ -1103,6 +1108,7 @@
 
 
         setCameraUI(true);
+        document.getElementById('finish-camera-btn').textContent='保存して終了（'+scanPages.length+'枚）';
         scanCanvas.parentElement.classList.add('camera-live');
         scanCanvas.classList.add('hidden');scanCanvas.hidden=true;emptyState.classList.add('hidden');
         cameraVideo.classList.remove('hidden');
@@ -1135,6 +1141,7 @@
     }
 
     function stopCamera() {
+      if(cameraCaptureTask)cameraFinishRequested=true;
       cancelManualTimer(false);
       setCameraUI(false);
       scanCanvas.parentElement.classList.remove('camera-live');
@@ -1352,14 +1359,14 @@
       return difference/n;
     }
     function startCameraAnalysis() {
-      let lastCheck=0,captureStarted=false,firstFrameAt=null,previous=null,previousCorners=null,anchor=null,stableMs=0,pauseMs=0;
+      let lastCheck=0,captureStarted=false,firstFrameAt=cameraCaptureBaseline?performance.now()-1000:null,previous=null,previousCorners=null,anchor=null,stableMs=0,pauseMs=0,replacementFrames=0;
       if(cameraAnimFrameId){cancelAnimationFrame(cameraAnimFrameId);cameraAnimFrameId=null;}
       const overlayCtx=cameraOverlayCanvas.getContext('2d');
       const tempCanvas=document.createElement('canvas'),tempCtx=tempCanvas.getContext('2d',{willReadFrequently:true});
       tempCanvas.width=320;
       function reset(){stableMs=0;pauseMs=0;anchor=null;}
       function checkLoop(){
-        if(captureStarted||manualCountdown||!videoStream||cameraVideo.paused||cameraVideo.ended)return;
+        if(captureStarted||manualCountdown||cameraCaptureTask||!videoStream||cameraVideo.paused||cameraVideo.ended)return;
         if(!isAutoCaptureMode){reset();previous=null;previousCorners=null;lastCheck=0;}
         if(cameraVideo.videoWidth>0&&cameraVideo.videoHeight>0){
           const now=performance.now();if(firstFrameAt===null)firstFrameAt=now;
@@ -1372,7 +1379,14 @@
               const found=detectDocument(data,tempCanvas.width,tempCanvas.height),detected=found?alignCaptureCorners(found,previousCorners):null;
               updateCornerTracking(detected,now);
               let message=autoCaptureGeometry(detected,tempCanvas.width/tempCanvas.height),ready=false;
-              if(now-firstFrameAt<1000){reset();message='カメラを準備中…';}
+              if(!message&&!cameraCornersVisible(detected))message='少し離して、画面内に書類全体を写してください';
+              if(!autoCaptureArmed){
+                const changed=!detected||!cameraCaptureBaseline||documentFrameMotion(data,cameraCaptureBaseline,tempCanvas.width,tempCanvas.height,detected)>22;
+                replacementFrames=changed?replacementFrames+1:0;
+                if(replacementFrames>=2){autoCaptureArmed=true;reset();previous=null;previousCorners=null;}
+              }
+              if(!autoCaptureArmed){reset();message='次の書類に入れ替えてください';}
+              else if(now-firstFrameAt<1000){reset();message='カメラを準備中…';}
               else if(message){reset();}
               else{
                 const motion=documentFrameMotion(data,previous,tempCanvas.width,tempCanvas.height,detected);
@@ -1412,6 +1426,15 @@
       cameraAnimFrameId=requestAnimationFrame(checkLoop);
     }
 
+    function cameraCornersVisible(corners){
+      if(!corners)return false;
+      const rect=cameraVideo.getBoundingClientRect();
+      if(!rect.width||!rect.height||!cameraVideo.videoWidth||!cameraVideo.videoHeight)return true;
+      const scale=Math.max(rect.width/cameraVideo.videoWidth,rect.height/cameraVideo.videoHeight);
+      const visibleX=rect.width/(cameraVideo.videoWidth*scale),visibleY=rect.height/(cameraVideo.videoHeight*scale);
+      const marginX=(1-visibleX)/2+.025*visibleX,marginY=(1-visibleY)/2+.025*visibleY;
+      return corners.every(p=>p.x>=marginX&&p.x<=1-marginX&&p.y>=marginY&&p.y<=1-marginY);
+    }
     // Recheck corners on a larger still image to reduce low-resolution crop errors.
     function refineDocumentCorners(source,hint=null){
       const c=document.createElement('canvas'),r=Math.min(1,640/Math.max(source.width,source.height));
@@ -1431,7 +1454,7 @@
     }
 
     function capturePhoto(corners = null, validateAuto = false) {
-      if (busy) return;
+      if (busy||cameraCaptureTask||cameraFinishRequested) return;
       if (!Array.isArray(corners)) corners = null;
       if (!videoStream || !cameraVideo.videoWidth) return;
       const tempCanvas = document.createElement('canvas');
@@ -1445,7 +1468,7 @@
         const cc=check.getContext('2d',{willReadFrequently:true});cc.drawImage(tempCanvas,0,0,check.width,check.height);
         const data=cc.getImageData(0,0,check.width,check.height).data;
         const found=detectDocument(data,check.width,check.height);
-        if(!found||autoCaptureGeometry(found,check.width/check.height))return false;
+        if(!found||autoCaptureGeometry(found,check.width/check.height)||!cameraCornersVisible(found))return false;
         const aligned=alignCaptureCorners(found,corners);
         if(Math.max(...aligned.map((p,i)=>Math.hypot(p.x-corners[i].x,p.y-corners[i].y)))>.025)return false;
         const detail=documentDetail(data,check.width,check.height,aligned);
@@ -1455,8 +1478,21 @@
       const dataUrl = tempCanvas.toDataURL('image/png');
       playShutterSound();
       const capturedCorners = isAutoCaptureMode && performance.now()-lastCornerSeenAt<=450 ? latestRawCorners : null;
-      stopCamera();
-      loadNewImage(dataUrl, corners || capturedCorners || 'detect');
+      const baseline=document.createElement('canvas');baseline.width=320;baseline.height=Math.max(160,Math.min(560,Math.round(320*tempCanvas.height/tempCanvas.width)));
+      const bc=baseline.getContext('2d',{willReadFrequently:true});bc.drawImage(tempCanvas,0,0,baseline.width,baseline.height);cameraCaptureBaseline=bc.getImageData(0,0,baseline.width,baseline.height).data;
+      autoCaptureArmed=false;
+      if(cameraAnimFrameId){cancelAnimationFrame(cameraAnimFrameId);cameraAnimFrameId=null;}
+      cameraCaptureTask=Promise.resolve().then(async()=>{
+        await new Promise((resolve,reject)=>loadNewImage(dataUrl,corners||capturedCorners||'detect',null,resolve,true,reject));
+        if(!(await saveCurrentPage(true)))throw new Error('保存できませんでした。画像を確認して保存してください');
+        document.getElementById('finish-camera-btn').textContent='保存して終了（'+scanPages.length+'枚）';
+        showToast(scanPages.length+'枚保存しました','fa-check');
+        if(scanPages.length>=20){cameraFinishRequested=true;showToast('20枚保存しました。PDFを保存してください','fa-info-circle');}
+      }).catch(err=>{cameraFinishRequested=true;showToast(err.message,'fa-circle-exclamation',true);}).finally(()=>{
+        cameraCaptureTask=null;
+        if(cameraFinishRequested||document.hidden||!videoStream)stopCamera();
+        else {scanCanvas.hidden=true;scanCanvas.classList.add('hidden');lastDetectedCorners=null;latestRawCorners=null;startCameraAnalysis();}
+      });
       return true;
     }
 
@@ -1470,7 +1506,7 @@
       if(wasWaiting&&restart&&videoStream&&!document.hidden)startCameraAnalysis();
     }
     function beginManualCapture(){
-      if(busy||manualCountdown||!videoStream||!cameraVideo.videoWidth)return;
+      if(busy||cameraCaptureTask||cameraFinishRequested||manualCountdown||!videoStream||!cameraVideo.videoWidth)return;
       prepareShutterSound();
       const seconds=appSettings.manualDelay;
       if(!seconds){capturePhoto();return;}
@@ -1478,7 +1514,7 @@
       if(cameraAnimFrameId){cancelAnimationFrame(cameraAnimFrameId);cameraAnimFrameId=null;}
       const token=cameraToken,deadline=performance.now()+seconds*1000;
       document.querySelectorAll('button').forEach(button=>{
-        if(['manual-timer-cancel-btn','close-camera-btn'].includes(button.id))return;
+        if(['manual-timer-cancel-btn','close-camera-btn','finish-camera-btn'].includes(button.id))return;
         button.dataset.manualDisabled=button.disabled?'yes':'no';button.disabled=true;
       });
       document.getElementById('manual-timer-overlay').hidden=false;
@@ -1494,7 +1530,13 @@
     }
     document.getElementById('take-photo-btn').addEventListener('click',beginManualCapture);
     document.getElementById('manual-timer-cancel-btn').addEventListener('click',()=>cancelManualTimer(true));
-    document.getElementById('close-camera-btn').addEventListener('click', stopCamera);
+    function finishCameraSession(){
+      cancelManualTimer(false);cameraFinishRequested=true;
+      if(cameraCaptureTask){document.getElementById('finish-camera-btn').textContent='保存中…';return;}
+      stopCamera();
+    }
+    document.getElementById('close-camera-btn').addEventListener('click',finishCameraSession);
+    document.getElementById('finish-camera-btn').addEventListener('click',finishCameraSession);
     document.getElementById('flip-camera-btn').addEventListener('click', () => {
       cameraFacing = cameraFacing === 'environment' ? 'user' : 'environment';
       startCamera();
@@ -1517,14 +1559,15 @@
       filePicker.value = '';
     });
 
-    function loadNewImage(src, autoCorners = null, importedFile = null, onReady = null) {
+    function loadNewImage(src, autoCorners = null, importedFile = null, onReady = null, keepCamera = false, onError = null) {
       if (busy) return;
       const token = ++imageLoadToken;
       const img = new Image();
-      img.onerror = () => { if(token===imageLoadToken) showToast('画像を開けませんでした。JPEG・PNG等を選んでください', 'fa-triangle-exclamation', true); };
+      img.onerror = () => { if(onError)onError(new Error('撮影画像を開けませんでした'));if(token===imageLoadToken) showToast('画像を開けませんでした。JPEG・PNG等を選んでください', 'fa-triangle-exclamation', true); };
       img.onload = () => {
-        if (token !== imageLoadToken || busy) return;
-        stopCamera();
+        try{
+        if (token !== imageLoadToken || busy){if(onError)onError(new Error('撮影画像の処理を中止しました'));return;}
+        if(!keepCamera)stopCamera();
         activePageIndex=null;currentPageDirty=true;
         sourceWidth=img.width;sourceHeight=img.height;
         const ratio = Math.min(1, 4096 / Math.max(img.width, img.height));
@@ -1539,7 +1582,7 @@
         }
         uncroppedImage=null;document.getElementById('restore-scan-btn').hidden=true;
         currentRotation = 0;
-        if(!onReady)selectFilter('clean');
+        if(!onReady||keepCamera)selectFilter('clean');
         invalidateOCR();
         emptyState.classList.add('hidden');
         scanCanvas.hidden=false;scanCanvas.classList.remove('hidden');
@@ -1558,12 +1601,20 @@
             if(result){uncroppedImage=originalImage;document.getElementById('restore-scan-btn').hidden=false;originalImage=result;invalidateOCR();renderDocument();showToast('書類を自動で切り抜き、台形補正しました','fa-check');}
           }else{showToast('取り込みました。四隅が見つからないためトリミングで調整してください','fa-crop-simple',true);}
         }
-        document.getElementById('scan-actions').hidden=false;document.getElementById('delete-current-btn').disabled=false;
+        document.getElementById('scan-actions').hidden=keepCamera;document.getElementById('delete-current-btn').disabled=false;
+        if(keepCamera){
+          scanCanvas.hidden=true;scanCanvas.classList.add('hidden');
+          // Closing the session must enable actions for the newly saved image.
+          for(const id of ['export-pdf-btn','export-img-btn','add-page-btn','delete-current-btn','open-crop-btn','rotate-doc-btn']){
+            const button=document.getElementById(id);button.dataset.cameraDisabled='no';button.disabled=true;
+          }
+        }
         updateQuality();renderPages();if(onReady)onReady();
         if(autoCorners&&!onReady){
           if(appSettings.photoSave&&!importedFile)preparePhotoSave();
           if(appSettings.autoOCR)ocrStatus.textContent='未認識';
         }
+        }catch(err){if(onError)onError(err);else showToast('画像を処理できませんでした','fa-triangle-exclamation',true);}
       };
       img.src = src;
     }
@@ -2091,7 +2142,7 @@
         readyFile=null;document.getElementById('file-ready').hidden=true;renderPages();
       }catch(err){showToast(err.message,'fa-circle-exclamation',true);}finally{setBusy(false);}
     }
-    async function saveCurrentPage(){
+    async function saveCurrentPage(keepCamera=false){
       if(busy||!originalImage)return false;
       if(!storageProtectionRequested&&navigator.storage?.persist){storageProtectionRequested=true;try{navigator.storage.persist().catch(()=>{});}catch(_){}}
       await pageStorageReady;
@@ -2099,7 +2150,7 @@
       if(activePageIndex!==null&&!currentPageDirty)return true;
       if(activePageIndex===null&&scanPages.length>=20){showToast('一度に20ページまでです。PDFを保存してください','fa-info-circle',true);return false;}
 
-      stopCamera();setBusy(true);
+      if(!keepCamera)stopCamera();setBusy(true);
       try{
 
         const page=snapshotPage(),next=scanPages.slice(),savedIndex=activePageIndex===null?next.length:activePageIndex;next[savedIndex]=page;
@@ -2303,6 +2354,7 @@
     document.getElementById('settings-btn').addEventListener('click', () => {
       apiKeyInput.value = getApiKey();
       document.getElementById('auto-ocr-setting').checked=appSettings.autoOCR;
+      document.getElementById('start-camera-setting').checked=appSettings.startInCamera;
       document.getElementById('photo-save-setting').checked=appSettings.photoSave;
     document.getElementById('shutter-sound-setting').checked=appSettings.shutterSound;
     document.getElementById('manual-delay-setting').value=String(appSettings.manualDelay);
@@ -2312,7 +2364,7 @@
     document.getElementById('save-settings-btn').addEventListener('click', () => {
       const key = apiKeyInput.value.trim();
       const wasAuto=appSettings.autoOCR;
-      const preferences={autoOCR:document.getElementById('auto-ocr-setting').checked,photoSave:document.getElementById('photo-save-setting').checked,shutterSound:document.getElementById('shutter-sound-setting').checked,manualDelay:[0,1,2,3].includes(Number(document.getElementById('manual-delay-setting').value))?Number(document.getElementById('manual-delay-setting').value):1};
+      const preferences={autoOCR:document.getElementById('auto-ocr-setting').checked,startInCamera:document.getElementById('start-camera-setting').checked,photoSave:document.getElementById('photo-save-setting').checked,shutterSound:document.getElementById('shutter-sound-setting').checked,manualDelay:[0,1,2,3].includes(Number(document.getElementById('manual-delay-setting').value))?Number(document.getElementById('manual-delay-setting').value):1};
       appSettings=preferences;
       try {
         if (key) localStorage.setItem(keyStoreName, key);
@@ -2358,6 +2410,9 @@
     autoCaptureIndicator.classList.add('hidden');
     exportPdfBtn.disabled=true;exportImgBtn.disabled=true;updateOCRButton();
     pageStorageReady=initializePageStorage();
+    pageStorageReady.then(()=>{
+      if(appSettings.startInCamera&&!document.hidden)return startCamera();
+    }).catch(()=>{showToast('撮影画面を開けませんでした。カメラボタンを押してください','fa-circle-exclamation',true);});
 
     })();
   </script>

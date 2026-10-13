@@ -3,7 +3,7 @@ const APP_SCOPE = new URL(self.registration.scope);
 const INDEX_URL = new URL('index.html', APP_SCOPE).href;
 const MANIFEST_URL = new URL('manifest.json', APP_SCOPE).href;
 const CACHE_PREFIX = 'goodscan:' + encodeURIComponent(APP_SCOPE.pathname) + ':';
-const CACHE_NAME = CACHE_PREFIX + '20261013-0946-v23';
+const CACHE_NAME = CACHE_PREFIX + '20261013-1015-v25';
 // Only the exact legacy cache supplied with this application is migrated.
 const LEGACY_CACHE_NAMES = ['goodscan-cache-v2'];
 
