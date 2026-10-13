@@ -333,6 +333,28 @@
     .page-controls{display:flex;gap:6px;flex-wrap:wrap}
     .page-controls button{padding:6px 10px;background:#1e293b;border-radius:8px;font-size:14px;min-width:44px}
     #pages-panel p{font-size:14px;line-height:1.6}
+
+    body{line-height:1.35;padding-bottom:92px}
+    main{padding:6px 8px !important;gap:6px !important}
+    main>div.aspect-\[3\/4\]{height:clamp(180px,34dvh,310px);border-radius:14px}
+    main>div.camera-live{height:min(64dvh,540px)}
+    main>.p-3,main>.p-3\.5{padding:8px}
+    main .space-y-3>*+*,main .space-y-2>*+*{margin-top:6px}
+    main button{padding-top:6px;padding-bottom:6px;line-height:1.25}
+    #quality-status:empty,#ocr-status:empty{display:none}
+    #quality-status{padding:6px 8px;border-radius:10px;line-height:1.35}
+    #pages-panel{padding:8px;line-height:1.35}
+    #pages-panel p{line-height:1.35}
+    .page-row{margin:6px 0;padding:6px;gap:6px}
+    .page-row img{width:44px;height:56px}
+    #settings-modal>div{padding:14px}
+    #settings-modal .space-y-4>*+*,#settings-modal>div>*+*{margin-top:8px}
+    .setting-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;font-size:14px;line-height:1.35;border-bottom:1px solid #334155}
+    .setting-row input{width:22px;height:22px;flex:none;accent-color:#6366f1}
+    #photo-save-preview{user-select:auto;-webkit-user-select:auto;-webkit-touch-callout:default}
+    body>div.sticky.bottom-0{padding-top:4px;gap:2px}
+    body>div.sticky.bottom-0>button{gap:0}
+    body>div.sticky.bottom-0>button>div{width:36px;height:36px}
   </style>
 </head>
 <body class="min-h-[100dvh] flex flex-col justify-between overflow-x-hidden">
@@ -361,15 +383,18 @@
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="flex items-center gap-2">
           <i class="fa-solid fa-key text-indigo-400"></i>
-          <h3 class="text-xs font-bold text-white">Gemini API 設定（OCRに必要）</h3>
+          <h3 class="text-xs font-bold text-white">設定</h3>
         </div>
         <button id="close-settings-btn" type="button" class="w-7 h-7 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-xs">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
       <p class="text-[14px] text-slate-400 leading-relaxed">
-        OCR・AI枠検出にはGoogle AI StudioのAPIキーが必要です。書類画像をGoogleへ送信します。契約・利用枠によって料金が発生します。キーはこの端末・ブラウザに保存し、次回から自動で使用します。GitHubのHTMLには書き込みません。「クリア」で保存したキーを削除できます。
+        OCR画像をGoogleへ送信します。利用枠により有料。キーは端末保存。
       </p>
+      <label class="setting-row"><span>撮影後に自動文字認識</span><input id="auto-ocr-setting" type="checkbox"></label>
+      <label class="setting-row"><span>撮影後に写真保存ボタンを表示</span><input id="photo-save-setting" type="checkbox"></label>
+      <p class="text-xs text-slate-400">写真への保存は最後に操作が必要です。</p>
       <input type="password" autocomplete="off" spellcheck="false" id="api-key-input" placeholder="AIzaSy..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono">
       <div class="grid grid-cols-2 gap-2 pt-1">
         <button id="clear-api-key-btn" type="button" class="py-2.5 rounded-xl bg-slate-800 text-rose-300 text-xs font-semibold">クリア</button>
@@ -391,7 +416,7 @@
         </div>
         <h3 class="text-sm font-bold text-slate-200">書類を取り込んで開始</h3>
         <p class="text-xs text-slate-400 mt-1 max-w-[240px] leading-relaxed">
-          書類を画面に入れ、約1.5秒静止してください。自動で撮影します。四隅が見つかれば自動で切り抜きます。
+          約1.5秒静止すると自動撮影。
         </p>
       </div>
 
@@ -448,8 +473,8 @@
       </div>
     </div>
 
-    <p id="quality-status" role="status" class="text-xs text-slate-400">撮影品質：画像を取り込むと確認します（目安）</p>
-    <p id="image-info" class="text-xs text-slate-400" role="status">画像未取込</p>
+    <p id="quality-status" role="status" class="text-xs text-slate-400"></p>
+    <p hidden id="image-info" class="text-xs text-slate-400" role="status">画像未取込</p>
     <!-- Filters List -->
     <div id="filter-list" class="grid grid-cols-2 gap-2">
       <button data-filter="clean" type="button" class="filter-pill ios-touch flex-shrink-0 text-xs py-2 px-3.5 rounded-xl font-medium bg-slate-800 text-slate-300 border border-slate-700/70 flex items-center gap-1.5">
@@ -482,8 +507,11 @@
     </div>
     <!-- OCR data is internal; this application outputs searchable PDF. -->
     <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 space-y-3">
-      <p id="ocr-status" role="status" class="text-xs text-slate-400">PDF作成時に文字認識し、選択・コピー用の文字を埋め込みます。</p>
-      <p class="text-xs text-slate-400">文字の選択・コピーにはPDFを使ってください。JPEG画像には認識文字が含まれません。</p>
+      <p id="ocr-status" role="status" class="text-xs text-slate-400"></p>
+      <div id="photo-save-panel" hidden>
+        <button id="photo-save-btn" type="button" class="w-full bg-slate-800 rounded-xl py-2">写真へ保存</button>
+        <details><summary>長押しで保存</summary><img id="photo-save-preview" alt="撮影画像" class="w-full rounded-xl"><p>画像を長押しして保存。</p></details>
+      </div>
       <!-- Export Actions -->
       <div class="pt-2 border-t border-slate-800 grid grid-cols-2 gap-2">
         <button id="export-pdf-btn" type="button" class="ios-touch py-3 px-3 rounded-xl bg-indigo-600 active:bg-indigo-700 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-md shadow-indigo-600/20 disabled:opacity-45 disabled:pointer-events-none">
@@ -491,7 +519,7 @@
             <i class="fa-solid fa-file-pdf text-sm text-red-300"></i>
             <span>PDFで渡す</span>
           </div>
-          <span class="text-[14px] font-normal text-indigo-200">画像＋選択・コピー用文字</span>
+          
         </button>
 
         <button id="export-img-btn" type="button" class="ios-touch py-3 px-3 rounded-xl bg-slate-800 active:bg-slate-750 text-slate-100 border border-slate-700 font-bold text-xs flex flex-col items-center justify-center gap-1 disabled:opacity-45 disabled:pointer-events-none">
@@ -499,22 +527,23 @@
             <i class="fa-regular fa-image text-sm text-sky-400"></i>
             <span>画像で渡す</span>
           </div>
-          <span class="text-[14px] font-normal text-slate-400">高画質JPEG</span>
+          
         </button>
       </div>
     </div>
 
-    <section id="pages-panel" class="bg-slate-900 border border-slate-700 rounded-2xl p-3 space-y-2">
+    <details id="pages-panel" class="bg-slate-900 border border-slate-700 rounded-2xl p-3 space-y-2">
+      <summary id="pages-summary">連続スキャン</summary>
       <p id="pages-status" role="status">連続スキャン：0ページ</p>
-      <p>ページ追加時に自動で文字認識します。ページはこの画面内で保持します。閉じる前にPDFを保存してください。</p>
+      <p>最大20枚。閉じる前にPDF保存。</p>
       <div class="grid grid-cols-2 gap-2">
-        <button id="add-page-btn" type="button" class="bg-indigo-600 rounded-xl py-3">このページを追加</button>
-        <button id="next-page-btn" type="button" class="bg-slate-800 rounded-xl py-3">次の書類を撮影</button>
+        <button id="add-page-btn" type="button" class="bg-indigo-600 rounded-xl py-3">ページ追加</button>
+        <button id="next-page-btn" type="button" class="bg-slate-800 rounded-xl py-3">次を撮影</button>
       </div>
       <div id="pages-list"></div>
-      <button id="export-pages-btn" type="button" class="w-full bg-indigo-600 rounded-xl py-3">まとめてPDFで渡す</button>
-      <button id="clear-pages-btn" type="button" class="w-full bg-slate-800 rounded-xl py-3">保存ページを全削除</button>
-    </section>
+      <button id="export-pages-btn" type="button" class="w-full bg-indigo-600 rounded-xl py-3">まとめてPDF</button>
+      <button id="clear-pages-btn" type="button" class="w-full bg-slate-800 rounded-xl py-3">全削除</button>
+    </details>
   </main>
 
   <!-- iOS Toast -->
@@ -675,6 +704,9 @@
     let sourceWidth = 0, sourceHeight = 0;
     let readyFile = null;
     let recognizedRevision = -1;
+    let appSettings={autoOCR:true,photoSave:false};
+    let photoSaveFile=null,photoSaveURL=null;
+    let automaticOCRTask=null;
     const scanPages = [];
     let activePageIndex = null;
     let currentPageDirty = true;
@@ -727,15 +759,22 @@
     // Separate each GitHub Pages application by its published directory.
     const keyStoreName = 'goodscan_gemini_key_v1:' + new URL('.', location.href).pathname;
     try { apiKeyMemory = localStorage.getItem(keyStoreName) || ''; } catch (_) {}
+    const settingsStoreName='goodscan_settings_v1:'+new URL('.',location.href).pathname;
+    try{const saved=JSON.parse(localStorage.getItem(settingsStoreName)||'null');if(saved){if(typeof saved.autoOCR==='boolean')appSettings.autoOCR=saved.autoOCR;if(typeof saved.photoSave==='boolean')appSettings.photoSave=saved.photoSave;}}catch(_){}
+    document.getElementById('auto-ocr-setting').checked=appSettings.autoOCR;
+    document.getElementById('photo-save-setting').checked=appSettings.photoSave;
     function getApiKey() { return apiKeyMemory; }
     function invalidateOCR() {
       imageRevision++;
       currentPageDirty=true;
       recognizedRevision=-1;
+      photoSaveFile=null;document.getElementById('photo-save-panel').hidden=true;
+      if(photoSaveURL){URL.revokeObjectURL(photoSaveURL);photoSaveURL=null;}
+      document.getElementById('photo-save-preview').removeAttribute('src');
       readyFile = null;document.getElementById('file-ready').hidden=true;
       ocrResults = []; ocrSourceText = ''; ocrState.value = '';
 
-      ocrStatus.textContent = 'OCR未実行。画像を変更した後は再認識してください。';
+      ocrStatus.textContent='';
     }
     function setBusy(value) {
       busy = value;
@@ -1065,10 +1104,10 @@
       }
       const sharpness=n?lapSq/n-(lapSum/n)**2:0;
       const warnings=[];
-      if(sharpness<45&&dark/(w*h)>.005)warnings.push('ピンぼけの可能性：文字を拡大して確認してください');
-      if(bright/(w*h)>.65&&dark/(w*h)<.025)warnings.push('反射・白飛び、または白紙の可能性：文字の欠けを確認してください');
-      if(mean/(w*h)<70)warnings.push('暗めです：明るい場所で撮り直してください');
-      if(edges/n<.003)warnings.push('文字の輪郭が少ない画像です：ピント・反射・白紙を確認してください');
+      if(sharpness<45&&dark/(w*h)>.005)warnings.push('ピント確認');
+      if(bright/(w*h)>.65&&dark/(w*h)<.025)warnings.push('白飛び・反射確認');
+      if(mean/(w*h)<70)warnings.push('暗い画像');
+      if(edges/n<.003)warnings.push('文字の輪郭を確認');
       return{sharpness,warnings};
     }
     function updateQuality(){
@@ -1077,7 +1116,7 @@
       c.width=Math.max(1,Math.round(originalImage.width*r));c.height=Math.max(1,Math.round(originalImage.height*r));
       c.getContext('2d').drawImage(originalImage,0,0,c.width,c.height);
       const q=assessQuality(c.getContext('2d').getImageData(0,0,c.width,c.height).data,c.width,c.height);
-      document.getElementById('quality-status').textContent=q.warnings.length?'撮影品質（目安）：'+q.warnings.join(' ／ '):'撮影品質（目安）：大きな問題を検出していません。文字の欠けを確認してください。';
+      document.getElementById('quality-status').textContent=q.warnings.length?q.warnings.join(' ／ '):'';
     }
     function paperVisible(data,w,h){return !!detectDocument(data,w,h);}
 
@@ -1283,6 +1322,10 @@
           }else{showToast('取り込みました。四隅が見つからないためトリミングで調整してください','fa-crop-simple',true);}
         }
         updateQuality();renderPages();if(onReady)onReady();
+        if(autoCorners&&!onReady){
+          if(appSettings.photoSave&&!importedFile)preparePhotoSave();
+          if(appSettings.autoOCR)automaticOCRTask=startAutomaticOCR();
+        }
       };
       img.src = src;
     }
@@ -1589,14 +1632,14 @@
         ocrState.value=parsed.fullText;ocrSourceText=parsed.fullText;
         ocrResults=parsed.fullText.trim()?blocks:[];
         const invalid=blocks.length!==parsed.blocks.length;
-        ocrStatus.textContent=!parsed.fullText.trim()?'文字を認識できませんでした。画像だけのPDFになります。':invalid?'文字を認識しました。一部の座標が不正なためPDFの文字位置は概略になります。':'文字認識完了。'+parsed.fullText.length+'文字をPDFに埋め込みます。';
+        ocrStatus.textContent=!parsed.fullText.trim()?'文字未検出':invalid?'認識完了（文字位置は概略）':'認識完了：'+parsed.fullText.length+'文字';
         if (invalid) {ocrResults=[];ocrSourceText='';}
         showToast(parsed.fullText.trim()?'文字認識が完了しました':'認識できる文字がありません','fa-brain',!parsed.fullText.trim());
       recognizedRevision=imageRevision;
     }
     async function ensureCurrentRecognition(){
-      if(recognizedRevision===imageRevision)return;
-      const rev=imageRevision;ocrStatus.textContent='PDF用の文字を認識中...';
+      if(!appSettings.autoOCR||recognizedRevision===imageRevision)return;
+      const rev=imageRevision;ocrStatus.textContent='文字認識中…';
       const result=await recognizeCanvas(ocrSourceCanvas());
       if(rev!==imageRevision)throw new Error('画像が変更されました');
       commitRecognition(result);
@@ -1613,7 +1656,7 @@
         const parsed=await recognizeCanvas(ocrSourceCanvas());
         if(imageRevision!==rev)throw new Error('画像が変更されました');
         commitRecognition(parsed);
-      } catch(err) {ocrStatus.textContent='OCR失敗：'+err.message+'。既存の文字は変更していません。';showToast(err.message,'fa-circle-exclamation',true);}
+      } catch(err) {ocrStatus.textContent='OCR失敗：'+err.message;showToast(err.message,'fa-circle-exclamation',true);}
       finally {scanBeam.classList.add('hidden');setBusy(false);execOcrBtn.innerHTML='<i class="fa-solid fa-brain"></i><span>文字認識する</span>';}
     });
 
@@ -1623,8 +1666,9 @@
     }
     function renderPages(){
       const list=document.getElementById('pages-list');list.replaceChildren();
+      document.getElementById('pages-summary').textContent='連続スキャン（'+scanPages.length+'枚）';
       document.getElementById('pages-status').textContent='連続スキャン：'+scanPages.length+'ページ'+(activePageIndex!==null?' ／ '+(activePageIndex+1)+'ページ目を編集中':'');
-      document.getElementById('add-page-btn').textContent=activePageIndex===null?'このページを追加':'編集中のページを更新';
+      document.getElementById('add-page-btn').textContent=activePageIndex===null?'ページ追加':'編集中のページを更新';
       scanPages.forEach((page,index)=>{
         const row=document.createElement('div');row.className='page-row';
         const thumb=document.createElement('img');thumb.src=page.image;thumb.alt=(index+1)+'ページ目';thumb.loading='lazy';row.appendChild(thumb);
@@ -1636,7 +1680,7 @@
           currentFilter='original';currentRotation=0;
           document.querySelectorAll('.filter-pill').forEach(b=>{b.className='filter-pill ios-touch text-xs py-2 px-3.5 rounded-xl font-medium '+(b.dataset.filter==='original'?'active-pill bg-indigo-600 text-white':'bg-slate-800 text-slate-300 border border-slate-700/70');});
           ocrState.value=page.text;ocrSourceText=page.text;ocrResults=JSON.parse(JSON.stringify(page.entries));
-          recognizedRevision=page.recognized?imageRevision:-1;activePageIndex=index;currentPageDirty=false;renderDocument();renderPages();ocrStatus.textContent='保存ページを開きました。画像を調整した後は「ページを更新」を押してください。';
+          recognizedRevision=page.recognized?imageRevision:-1;activePageIndex=index;currentPageDirty=false;renderDocument();renderPages();ocrStatus.textContent='保存ページを表示';
         });});
         button('↑',()=>movePage(index,-1),index===0);button('↓',()=>movePage(index,1),index===scanPages.length-1);
         button('削除',()=>{if(!confirm((index+1)+'ページ目を削除しますか？'))return;scanPages.splice(index,1);if(activePageIndex===index)activePageIndex=null;else if(activePageIndex>index)activePageIndex--;readyFile=null;document.getElementById('file-ready').hidden=true;renderPages();});
@@ -1652,13 +1696,13 @@
     document.getElementById('add-page-btn').addEventListener('click',async()=>{
       if(busy||!originalImage){showToast('書類を取り込んでください','fa-info-circle',true);return;}
       if(activePageIndex===null&&scanPages.length>=20){showToast('一度に20ページまでです。PDFを保存してください','fa-info-circle',true);return;}
-      if(recognizedRevision!==imageRevision&&!requireKey())return;
+      if(appSettings.autoOCR&&recognizedRevision!==imageRevision&&!requireKey())return;
       stopCamera();setBusy(true);
       try{
         await ensureCurrentRecognition();
-        if(!ocrState.value.trim()&&!confirm('文字が検出されませんでした。画像だけのページとして追加しますか？'))return;
+        if(appSettings.autoOCR&&!ocrState.value.trim()&&!confirm('文字未検出。画像のみで追加しますか？'))return;
         const page=snapshotPage();if(activePageIndex===null){scanPages.push(page);activePageIndex=scanPages.length-1;}else scanPages[activePageIndex]=page;
-        currentPageDirty=false;readyFile=null;document.getElementById('file-ready').hidden=true;renderPages();showToast('文字認識したページを保存しました','fa-check');
+        currentPageDirty=false;readyFile=null;document.getElementById('file-ready').hidden=true;renderPages();showToast('ページを保存しました','fa-check');
       }catch(err){ocrStatus.textContent='ページ追加失敗：'+err.message;showToast(err.message,'fa-circle-exclamation',true);}
       finally{setBusy(false);}
     });
@@ -1704,12 +1748,12 @@
     }
     exportPdfBtn.addEventListener('click',async()=>{
       if(busy||!originalImage)return;
-      if(recognizedRevision!==imageRevision&&!requireKey())return;
+      if(appSettings.autoOCR&&recognizedRevision!==imageRevision&&!requireKey())return;
       stopCamera();setBusy(true);
-      exportPdfBtn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i><span>文字認識・PDF作成中...</span>';
+      exportPdfBtn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i><span>'+(appSettings.autoOCR?'文字認識・PDF作成中…':'PDF作成中…')+'</span>';
       try {
         await ensureCurrentRecognition();
-        if(!ocrState.value.trim()&&!confirm('文字が検出されませんでした。選択・コピーできない画像のみのPDFを作成しますか？'))return;
+        if(appSettings.autoOCR&&!ocrState.value.trim()&&!confirm('文字未検出。画像のみのPDFを作りますか？'))return;
         renderDocument();
         const text=ocrState.value;
         const entries=ocrSourceText===text?ocrResults:[];
@@ -1717,7 +1761,7 @@
         presentFile(new Blob([bytes],{type:'application/pdf'}),'GoodScan_'+new Date().toISOString().slice(0,10)+'.pdf');
         showToast(text.trim()?'検索用文字付きPDFを用意しました':'画像だけのPDFを用意しました','fa-file-pdf');
       }catch(err){ocrStatus.textContent='PDF作成失敗：'+err.message;showToast(err.message,'fa-circle-exclamation',true);}
-      finally{setBusy(false);exportPdfBtn.innerHTML='<div class="flex items-center gap-1.5"><i class="fa-solid fa-file-pdf text-sm text-red-300"></i><span>PDFで渡す</span></div><span class="text-[14px] font-normal text-indigo-200">画像＋選択・コピー用文字</span>';}
+      finally{setBusy(false);exportPdfBtn.innerHTML='<div class="flex items-center gap-1.5"><i class="fa-solid fa-file-pdf text-sm text-red-300"></i><span>PDFで渡す</span></div>';}
     });
 
     document.getElementById('export-img-btn').addEventListener('click', () => {
@@ -1731,26 +1775,56 @@
       }, 'image/jpeg',0.96);
     });
 
+    function preparePhotoSave(){
+      const rev=imageRevision;renderDocument();
+      scanCanvas.toBlob(blob=>{
+        if(!blob||rev!==imageRevision||!appSettings.photoSave)return;
+        photoSaveFile=new File([blob],'GoodScan_'+Date.now()+'.jpg',{type:'image/jpeg'});
+        if(photoSaveURL)URL.revokeObjectURL(photoSaveURL);
+        photoSaveURL=URL.createObjectURL(photoSaveFile);document.getElementById('photo-save-preview').src=photoSaveURL;
+        document.getElementById('photo-save-panel').hidden=false;
+      },'image/jpeg',.96);
+    }
+    document.getElementById('photo-save-btn').addEventListener('click',async()=>{
+      if(!photoSaveFile)return;
+      const file=photoSaveFile;
+      try{if(navigator.canShare?.({files:[file]})&&navigator.share)await navigator.share({files:[file]});
+      else{document.getElementById('photo-save-preview').parentElement.open=true;showToast('画像を長押しして保存してください','fa-image');}}
+      catch(err){if(err.name!=='AbortError'){document.getElementById('photo-save-preview').parentElement.open=true;showToast('画像を長押しして保存してください','fa-image');}}
+    });
+    async function startAutomaticOCR(){
+      if(!appSettings.autoOCR||recognizedRevision===imageRevision||busy)return;
+      if(!getApiKey()){ocrStatus.textContent='APIキー未設定';return;}
+      stopCamera();setBusy(true);scanBeam.classList.remove('hidden');
+      try{await ensureCurrentRecognition();}catch(err){ocrStatus.textContent='OCR失敗：'+err.message;showToast(err.message,'fa-circle-exclamation',true);}
+      finally{scanBeam.classList.add('hidden');setBusy(false);automaticOCRTask=null;}
+    }
     // Settings Modal
     const settingsModal = document.getElementById('settings-modal');
     const apiKeyInput = document.getElementById('api-key-input');
     document.getElementById('settings-btn').addEventListener('click', () => {
       apiKeyInput.value = getApiKey();
+      document.getElementById('auto-ocr-setting').checked=appSettings.autoOCR;
+      document.getElementById('photo-save-setting').checked=appSettings.photoSave;
       settingsModal.classList.remove('hidden');
     });
     document.getElementById('close-settings-btn').addEventListener('click', () => {apiKeyInput.value='';settingsModal.classList.add('hidden');});
     document.getElementById('save-settings-btn').addEventListener('click', () => {
       const key = apiKeyInput.value.trim();
+      const preferences={autoOCR:document.getElementById('auto-ocr-setting').checked,photoSave:document.getElementById('photo-save-setting').checked};
+      appSettings=preferences;
       try {
         if (key) localStorage.setItem(keyStoreName, key);
         else localStorage.removeItem(keyStoreName);
+        localStorage.setItem(settingsStoreName,JSON.stringify(preferences));
         apiKeyMemory = key;
-        showToast(key ? 'APIキーをこの端末に保存しました' : '保存したAPIキーを削除しました', 'fa-key');
+        if(!preferences.photoSave)document.getElementById('photo-save-panel').hidden=true;
+        showToast('設定を保存しました', 'fa-check');
         apiKeyInput.value = '';
         settingsModal.classList.add('hidden');
       } catch (_) {
         apiKeyMemory = key;
-        showToast('端末に保存できません。この画面内だけで使用します', 'fa-triangle-exclamation', true);
+        showToast('端末保存できません。この画面内だけに適用します', 'fa-triangle-exclamation', true);
       }
     });
     document.getElementById('clear-api-key-btn').addEventListener('click', () => {
