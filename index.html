@@ -315,8 +315,6 @@
     #filter-list button{justify-content:center;padding:10px 6px;min-width:0}
     #auto-capture-indicator{width:calc(100% - 24px);max-width:330px;text-align:center;border-radius:14px;white-space:normal;top:10px}
     #camera-controls{bottom:12px;padding-left:12px;padding-right:12px}
-    #ocr-textarea{min-height:140px}
-    #sim-search-input{padding-right:92px}
     #file-ready-label{overflow-wrap:anywhere}
     #toast{width:calc(100% - 24px);max-width:420px;top:max(env(safe-area-inset-top),12px);border-radius:14px;line-height:1.5}
     #crop-modal{padding-top:max(env(safe-area-inset-top),10px);padding-bottom:max(env(safe-area-inset-bottom),10px)}
@@ -335,7 +333,6 @@
     .page-controls{display:flex;gap:6px;flex-wrap:wrap}
     .page-controls button{padding:6px 10px;background:#1e293b;border-radius:8px;font-size:14px;min-width:44px}
     #pages-panel p{font-size:14px;line-height:1.6}
-    #region-textarea{font-size:16px !important}
   </style>
 </head>
 <body class="min-h-[100dvh] flex flex-col justify-between overflow-x-hidden">
@@ -394,7 +391,7 @@
         </div>
         <h3 class="text-sm font-bold text-slate-200">書類を取り込んで開始</h3>
         <p class="text-xs text-slate-400 mt-1 max-w-[240px] leading-relaxed">
-          書類の四隅を画面に入れてください。枠が緑になり、静止すると自動撮影・切り抜きします。
+          書類を画面に入れ、約1.5秒静止してください。自動で撮影します。四隅が見つかれば自動で切り抜きます。
         </p>
       </div>
 
@@ -483,46 +480,10 @@
         <button id="save-ready-btn" type="button" class="bg-slate-800 rounded-xl py-3">ファイル保存</button>
       </div>
     </div>
-    <button id="region-ocr-btn" type="button" class="w-full bg-slate-800 border border-slate-700 rounded-xl py-3">小文字の範囲を選んで再認識</button>
-    <div id="region-result" hidden class="bg-slate-900 border border-slate-700 rounded-2xl p-3 space-y-2">
-      <p>選択範囲の認識結果</p>
-      <textarea id="region-textarea" rows="3" class="w-full bg-slate-950 rounded-xl p-3" readonly></textarea>
-      <div class="grid grid-cols-2 gap-2">
-        <button id="region-copy-btn" type="button" class="bg-slate-800 rounded-xl py-3">コピー</button>
-        <button id="region-add-btn" type="button" class="bg-indigo-600 rounded-xl py-3">認識文字の末尾に追加</button>
-      </div>
-      <p>誤読の修正はコピーして認識テキストへ貼り付けます。</p>
-    </div>
-    <!-- Text Result Box -->
-    <div class="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-3.5 space-y-3">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
-        <div class="flex items-center space-x-2">
-          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-          <h2 class="text-xs font-bold text-slate-200">認識テキスト</h2>
-        </div>
-        <button id="copy-text-btn" type="button" class="ios-touch bg-slate-800 active:bg-slate-700 text-slate-200 text-[14px] font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1 border border-slate-700">
-          <i class="fa-regular fa-copy"></i>
-          <span>コピー</span>
-        </button>
-      </div>
-
-      <!-- Quick Text Format Buttons -->
-      <div class="flex items-center space-x-1.5 overflow-x-auto no-scrollbar text-[14px]">
-        <button id="clean-newlines-btn" type="button" class="flex-shrink-0 bg-slate-800 active:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700/60">
-          改行を整理
-        </button>
-        <button id="to-bullets-btn" type="button" class="flex-shrink-0 bg-slate-800 active:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700/60">
-          箇条書きに整形
-        </button>
-        <button id="clear-text-btn" type="button" class="flex-shrink-0 bg-slate-800 active:bg-slate-700 text-rose-300 px-2.5 py-1 rounded-lg border border-slate-700/60">
-          クリア
-        </button>
-      </div>
-
-      <p id="ocr-status" role="status" class="text-xs text-slate-400">OCR未実行。画像だけのPDFも保存できます。</p>
-      <textarea id="ocr-textarea" rows="5" placeholder="書類を取り込み「文字認識する」を押すと、ここに文字が抽出されます。直接編集も可能です。" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 font-mono focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder-slate-600 resize-none"></textarea>
-
-      <details><summary>原本を渡す</summary><button id="export-original-btn" type="button" disabled class="w-full bg-slate-800 border border-slate-700 rounded-xl py-3">原本をそのまま渡す</button></details>
+    <!-- OCR data is internal; this application outputs searchable PDF. -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 space-y-3">
+      <p id="ocr-status" role="status" class="text-xs text-slate-400">PDF作成時に文字認識し、選択・コピー用の文字を埋め込みます。</p>
+      <p class="text-xs text-slate-400">文字の選択・コピーにはPDFを使ってください。JPEG画像には認識文字が含まれません。</p>
       <!-- Export Actions -->
       <div class="pt-2 border-t border-slate-800 grid grid-cols-2 gap-2">
         <button id="export-pdf-btn" type="button" class="ios-touch py-3 px-3 rounded-xl bg-indigo-600 active:bg-indigo-700 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-md shadow-indigo-600/20 disabled:opacity-45 disabled:pointer-events-none">
@@ -530,7 +491,7 @@
             <i class="fa-solid fa-file-pdf text-sm text-red-300"></i>
             <span>PDFで渡す</span>
           </div>
-          <span class="text-[14px] font-normal text-indigo-200">高画質画像＋検索文字</span>
+          <span class="text-[14px] font-normal text-indigo-200">画像＋選択・コピー用文字</span>
         </button>
 
         <button id="export-img-btn" type="button" class="ios-touch py-3 px-3 rounded-xl bg-slate-800 active:bg-slate-750 text-slate-100 border border-slate-700 font-bold text-xs flex flex-col items-center justify-center gap-1 disabled:opacity-45 disabled:pointer-events-none">
@@ -545,7 +506,7 @@
 
     <section id="pages-panel" class="bg-slate-900 border border-slate-700 rounded-2xl p-3 space-y-2">
       <p id="pages-status" role="status">連続スキャン：0ページ</p>
-      <p>文字認識・確認後にページを追加してください。ページはこの画面内で保持します。閉じる前にPDFを保存してください。</p>
+      <p>ページ追加時に自動で文字認識します。ページはこの画面内で保持します。閉じる前にPDFを保存してください。</p>
       <div class="grid grid-cols-2 gap-2">
         <button id="add-page-btn" type="button" class="bg-indigo-600 rounded-xl py-3">このページを追加</button>
         <button id="next-page-btn" type="button" class="bg-slate-800 rounded-xl py-3">次の書類を撮影</button>
@@ -554,21 +515,6 @@
       <button id="export-pages-btn" type="button" class="w-full bg-indigo-600 rounded-xl py-3">まとめてPDFで渡す</button>
       <button id="clear-pages-btn" type="button" class="w-full bg-slate-800 rounded-xl py-3">保存ページを全削除</button>
     </section>
-    <!-- Simulator -->
-    <details id="search-details" class="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-3.5 space-y-2">
-      <summary>認識文字を検索</summary>
-      <div class="flex items-center justify-between">
-        <h3 class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-          <i class="fa-solid fa-magnifying-glass text-amber-400"></i>
-          <span>検索プレビュー</span>
-        </h3>
-        <span class="text-[14px] text-slate-400">文字の一致を確認</span>
-      </div>
-      <div class="relative">
-        <input type="text" id="sim-search-input" placeholder="検索したい単語を入力 (例: 議事録, 決定)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-400">
-        <div id="sim-search-count" class="absolute right-3 top-2.5 text-[14px] text-slate-400">0件一致</div>
-      </div>
-    </details>
   </main>
 
   <!-- iOS Toast -->
@@ -647,14 +593,14 @@
             <span class="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[14px]">2</span>
             AIでOCR実行
           </div>
-          <p class="text-slate-400 text-[14px]">APIキーを設定してGeminiで文字認識します。誤読を確認し、必要に応じてテキストを修正してください。</p>
+          <p class="text-slate-400 text-[14px]">APIキーを設定します。「PDFで渡す」または「ページを追加」でGeminiが文字を認識し、PDFに選択・コピー用の文字を埋め込みます。</p>
         </div>
         <div class="p-3 rounded-xl bg-slate-800/70 border border-slate-700/60 space-y-1">
           <div class="font-bold text-indigo-300 flex items-center gap-1.5">
             <span class="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[14px]">3</span>
             GoodNotes用PDFを出力
           </div>
-          <p class="text-slate-400 text-[14px]">「GoodNotes用PDF」を押すと、画像と検索用文字を含むPDFを作成します。次に「他のアプリへ共有」を押し、Goodnotesなどの受け取り先を選んでください。JPEG画像には検索用文字は埋め込まれません。</p>
+          <p class="text-slate-400 text-[14px]">「PDFで渡す」を押すと、画像と検索用文字を含むPDFを作成します。次に「他のアプリへ共有」を押し、Goodnotesなどの受け取り先を選んでください。JPEG画像には検索用文字は埋め込まれません。</p>
         </div>
       </div>
 
@@ -721,14 +667,14 @@
     let prevFrameData = null;
     let lastDetectedCorners = null;
     let previousDetectedCorners = null;
+    let lastCornerSeenAt = 0;
+    let latestRawCorners = null;
     let cameraAnimFrameId = null;
     let toastTimer = null;
     let apiKeyMemory = '';
-    let sourceFile = null;
     let sourceWidth = 0, sourceHeight = 0;
     let readyFile = null;
-    let cropPurpose = 'crop';
-    let regionText = '';
+    let recognizedRevision = -1;
     const scanPages = [];
     let activePageIndex = null;
     let currentPageDirty = true;
@@ -736,6 +682,7 @@
     let imageRevision = 0;
     let imageLoadToken = 0;
     let cameraToken = 0;
+    let cameraStarting = false;
     let requestController = null;
     let ocrSourceText = '';
     let pdfFrame = null;
@@ -769,7 +716,7 @@
     const modeAutoBtn = document.getElementById('mode-auto-btn');
     const modeManualBtn = document.getElementById('mode-manual-btn');
     const scanBeam = document.getElementById('scan-beam');
-    const ocrTextarea = document.getElementById('ocr-textarea');
+    const ocrState = { value: '' };
     const execOcrBtn = document.getElementById('exec-ocr-btn');
     const exportPdfBtn = document.getElementById('export-pdf-btn');
     const exportImgBtn = document.getElementById('export-img-btn');
@@ -784,29 +731,20 @@
     function invalidateOCR() {
       imageRevision++;
       currentPageDirty=true;
-      regionText='';document.getElementById('region-textarea').value='';document.getElementById('region-result').hidden=true;
+      recognizedRevision=-1;
       readyFile = null;document.getElementById('file-ready').hidden=true;
-      ocrResults = []; ocrSourceText = ''; ocrTextarea.value = '';
-      document.getElementById('sim-search-input').value = '';
-      document.getElementById('sim-search-count').textContent = '0件一致';
+      ocrResults = []; ocrSourceText = ''; ocrState.value = '';
+
       ocrStatus.textContent = 'OCR未実行。画像を変更した後は再認識してください。';
-    }
-    function textChanged() {
-      currentPageDirty=true;
-      readyFile=null;document.getElementById('file-ready').hidden=true;
-      ocrResults = []; ocrSourceText = '';
-      ocrStatus.textContent = ocrTextarea.value.trim() ? '編集した文字をPDFへ埋め込みます。文字位置は原稿と一致しません。' : 'OCR文字なし。画像だけのPDFになります。';
-      updateSearch();
     }
     function setBusy(value) {
       busy = value;
       document.querySelectorAll('button').forEach(b => {
         if (!b.dataset.oldDisabled && value) b.dataset.oldDisabled = b.disabled ? 'yes' : 'no';
         if (value) b.disabled = true;
-        else { b.disabled = b.dataset.oldDisabled === 'yes'; delete b.dataset.oldDisabled; }
+        else if(b.dataset.oldDisabled!==undefined) { b.disabled = b.dataset.oldDisabled === 'yes'; delete b.dataset.oldDisabled; }
       });
-      ocrTextarea.readOnly = value;
-      document.getElementById('sim-search-input').disabled = value;
+
     }
     function requireKey() {
       if (getApiKey()) return true;
@@ -912,14 +850,6 @@
       }catch(err){if(err.name!=='AbortError')showToast('共有できません。「ファイル保存」をお試しください','fa-circle-exclamation',true);}
     });
     document.getElementById('save-ready-btn').addEventListener('click',()=>{if(readyFile)downloadBlob(readyFile,readyFile.name);});
-    document.getElementById('export-original-btn').addEventListener('click',()=>{
-      if(!sourceFile||busy)return;presentFile(sourceFile,sourceFile.name||'GoodScan_original.png');
-    });
-    function sourceBlob(dataUrl){
-      const [head,body]=dataUrl.split(',');const binary=atob(body),bytes=new Uint8Array(binary.length);
-      for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
-      return new Blob([bytes],{type:head.match(/data:([^;]+)/)?.[1]||'image/png'});
-    }
     modeAutoBtn.addEventListener('click', () => {
       isAutoCaptureMode = true;
       stableSince = 0;
@@ -927,7 +857,7 @@
       modeAutoBtn.className = 'px-3 py-1 rounded-full bg-indigo-600 text-white font-semibold transition-all';
       modeManualBtn.className = 'px-3 py-1 rounded-full text-slate-300 font-medium transition-all';
       autoCaptureIndicator.classList.remove('hidden');
-      autoCaptureText.textContent = '書類の四隅を画面に入れてください';
+      autoCaptureText.textContent = '書類を写して静止してください';
       if (autoCaptureBarWrap) autoCaptureBarWrap.classList.add('hidden');
       showToast('自動撮影モードに切り替えました', 'fa-wand-magic-sparkles');
     });
@@ -942,11 +872,12 @@
     });
 
     function setCameraUI(active){
-      const ids=['exec-ocr-btn','export-pdf-btn','export-img-btn','export-original-btn','region-ocr-btn','add-page-btn','open-crop-btn','rotate-doc-btn'];
+      const ids=['exec-ocr-btn','export-pdf-btn','export-img-btn','add-page-btn','open-crop-btn','rotate-doc-btn'];
       for(const id of ids){const button=document.getElementById(id);if(active){button.dataset.cameraDisabled=button.disabled?'yes':'no';button.disabled=true;}else if(button.dataset.cameraDisabled){button.disabled=button.dataset.cameraDisabled==='yes';delete button.dataset.cameraDisabled;}}
     }
     async function startCamera() {
-      if (busy) return;
+      if (busy || cameraStarting) return;
+      cameraStarting=true;
       stopCamera();
       const token = cameraToken;
       try {
@@ -965,6 +896,8 @@
             audio: false
           });
         } catch (initialErr) {
+          if (!['OverconstrainedError','ConstraintNotSatisfiedError'].includes(initialErr.name)) throw initialErr;
+          if(token!==cameraToken)return;
           stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: cameraFacing },
             audio: false
@@ -978,7 +911,7 @@
         cameraVideo.setAttribute('webkit-playsinline', '');
         cameraVideo.muted = true;
 
-        searchOverlay.classList.add('hidden');
+
         setCameraUI(true);
         scanCanvas.parentElement.classList.add('camera-live');
         cameraVideo.classList.remove('hidden');
@@ -992,32 +925,29 @@
 
         if (isAutoCaptureMode) {
           autoCaptureIndicator.classList.remove('hidden');
-          autoCaptureText.textContent = '書類の四隅を画面に入れてください';
+          autoCaptureText.textContent = '書類を写して静止してください';
           if (autoCaptureBarWrap) autoCaptureBarWrap.classList.add('hidden');
         }
 
         stableSince = 0;
         prevFrameData = null;
 
-        if (cameraVideo.readyState >= 2) {
-          startCameraAnalysis();
-        } else {
-          cameraVideo.onloadedmetadata = () => startCameraAnalysis();
-        }
+        // Polling handles late video frames without depending on metadata event timing.
+        startCameraAnalysis();
 
       } catch (err) {
         if (token !== cameraToken) return;
         stopCamera();
         console.error('Camera startup error:', err);
-        showToast('カメラ起動失敗。写真選択をお試しください', 'fa-triangle-exclamation', true);
-      }
+        showToast(err.name==='NotAllowedError'?'Safariのこのサイトのカメラ設定を「許可」にしてください':'カメラ起動失敗。写真選択をお試しください', 'fa-triangle-exclamation', true);
+      } finally {cameraStarting=false;}
     }
 
     function stopCamera() {
       setCameraUI(false);
       scanCanvas.parentElement.classList.remove('camera-live');
       cameraToken++;
-      lastDetectedCorners=null;previousDetectedCorners=null;
+      lastDetectedCorners=null;previousDetectedCorners=null;latestRawCorners=null;lastCornerSeenAt=0;
       cameraVideo.onloadedmetadata = null;
       if (cameraAnimFrameId) {
         cancelAnimationFrame(cameraAnimFrameId);
@@ -1151,10 +1081,32 @@
     }
     function paperVisible(data,w,h){return !!detectDocument(data,w,h);}
 
+    function updateCornerTracking(detected,now){
+      let jump=false;
+      if(detected){
+        let aligned=detected.map(p=>({x:p.x,y:p.y}));
+        if(lastDetectedCorners){
+          let best=Infinity;
+          for(let shift=0;shift<4;shift++){
+            const candidate=detected.map((_,i)=>detected[(i+shift)%4]);
+            const error=candidate.reduce((sum,p,i)=>sum+Math.hypot(p.x-lastDetectedCorners[i].x,p.y-lastDetectedCorners[i].y),0);
+            if(error<best){best=error;aligned=candidate.map(p=>({x:p.x,y:p.y}));}
+          }
+          jump=Math.max(...aligned.map((p,i)=>Math.hypot(p.x-lastDetectedCorners[i].x,p.y-lastDetectedCorners[i].y)))>.12;
+          lastDetectedCorners=jump?aligned:aligned.map((p,i)=>({x:lastDetectedCorners[i].x*.6+p.x*.4,y:lastDetectedCorners[i].y*.6+p.y*.4}));
+        }else lastDetectedCorners=aligned;
+        latestRawCorners=aligned;lastCornerSeenAt=now;
+      }else if(now-lastCornerSeenAt>1200){lastDetectedCorners=null;latestRawCorners=null;}
+      return{corners:lastDetectedCorners,jump};
+    }
+
     function startCameraAnalysis() {
       let lastCheck = 0;
-      const REQUIRED_STABLE_MS = 1000; // 1.0秒静止で撮影
-      const STABILITY_THRESHOLD = 9.0;  // 手ブレ許容度
+      const REQUIRED_STABLE_MS = 1500; // Shutter is independent of corner detection.
+      const STABILITY_THRESHOLD = 9.0;
+      const startedAt = performance.now();
+      let captureStarted = false;
+      let unstableSince = 0;
 
       if (cameraAnimFrameId) {
         cancelAnimationFrame(cameraAnimFrameId);
@@ -1165,12 +1117,14 @@
       const tempCanvas = document.createElement('canvas');
       const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
       tempCanvas.width = 240;
-      tempCanvas.height = Math.max(120,Math.min(400,Math.round(240*cameraVideo.videoHeight/cameraVideo.videoWidth)));
+      tempCanvas.height = Math.max(120,Math.min(400,Math.round(240*(cameraVideo.videoHeight||4)/(cameraVideo.videoWidth||3))));
 
       function checkLoop() {
-        if (!videoStream || cameraVideo.paused || cameraVideo.ended) return;
+        if (captureStarted || !videoStream || cameraVideo.paused || cameraVideo.ended) return;
 
         if (cameraVideo.videoWidth > 0 && cameraVideo.videoHeight > 0) {
+          const frameHeight=Math.max(120,Math.min(400,Math.round(240*cameraVideo.videoHeight/cameraVideo.videoWidth)));
+          if(tempCanvas.height!==frameHeight)tempCanvas.height=frameHeight;
           cameraOverlayCanvas.width = cameraVideo.videoWidth;
           cameraOverlayCanvas.height = cameraVideo.videoHeight;
 
@@ -1183,13 +1137,15 @@
           }else{overlayCtx.setLineDash([15,10]);overlayCtx.strokeRect(w*.08,h*.08,w*.84,h*.84);overlayCtx.setLineDash([]);}
 
           if (isAutoCaptureMode && performance.now() - lastCheck >= 200) {
-            lastCheck = performance.now();
+            const now=performance.now(),checkDelta=lastCheck?Math.min(400,now-lastCheck):200;
+            lastCheck=now;
             try {
               tempCtx.drawImage(cameraVideo, 0, 0, tempCanvas.width, tempCanvas.height);
               const curData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
 
-              const detected=detectDocument(curData,tempCanvas.width,tempCanvas.height);
-              lastDetectedCorners=detected;
+              let detected=null;
+              try{detected=detectDocument(curData,tempCanvas.width,tempCanvas.height);}catch(_){/* Detection must not disable the shutter. */}
+              const tracked=updateCornerTracking(detected,now);
               if (prevFrameData) {
                 let diff = 0;
                 for (let i = 0; i < curData.length; i += 4) {
@@ -1197,9 +1153,10 @@
                 }
                 const avgDiff = diff / (curData.length / 4);
 
-                if (detected && previousDetectedCorners && Math.max(...detected.map((p,i)=>Math.hypot(p.x-previousDetectedCorners[i].x,p.y-previousDetectedCorners[i].y)))<.025 && avgDiff < STABILITY_THRESHOLD) {
-                  if (!stableSince) stableSince = performance.now();
-                  const elapsed = performance.now() - stableSince;
+                if (now-startedAt>=700 && !tracked.jump && avgDiff < STABILITY_THRESHOLD) {
+                  unstableSince=0;
+                  if (!stableSince) stableSince=now;
+                  const elapsed=now-stableSince;
                   const progress = Math.min(100, Math.round((elapsed / REQUIRED_STABLE_MS) * 100));
 
                   if (autoCaptureBarWrap) {
@@ -1208,6 +1165,7 @@
                   }
 
                   if (elapsed >= REQUIRED_STABLE_MS) {
+                    captureStarted=true;
                     autoCaptureText.textContent = '自動撮影完了！';
                     capturePhoto(detected);
                     return;
@@ -1215,14 +1173,27 @@
                     autoCaptureText.textContent = '動かさないでください...';
                   }
                 } else {
-                  stableSince = 0;
-                  if (autoCaptureBarWrap) autoCaptureBarWrap.classList.add('hidden');
-                  autoCaptureText.textContent = '書類の四隅を画面に入れてください';
+                  const briefShake=now-startedAt>=700&&!tracked.jump&&avgDiff<24&&stableSince>0;
+                  if(briefShake){
+                    if(!unstableSince)unstableSince=now;
+                    stableSince+=checkDelta; // Pause instead of counting a shaky frame as stable.
+                    if(now-unstableSince<=450){
+                      autoCaptureText.textContent='枠を保持しています。少し静止してください';
+                    }else{
+                      stableSince=0;unstableSince=0;autoCaptureBarWrap.classList.add('hidden');
+                      autoCaptureText.textContent='動きが続いています。静止してください';
+                    }
+                  }else{
+                    stableSince=0;unstableSince=0;autoCaptureBarWrap.classList.add('hidden');
+                    autoCaptureText.textContent='書類を写して静止してください';
+                  }
                 }
               }
               prevFrameData = curData;
               previousDetectedCorners = detected;
-            } catch (cvErr) {}
+            } catch (cvErr) {
+              stableSince=0;autoCaptureText.textContent='映像を確認できません。手動撮影をお試しください';
+            }
           }
         }
         cameraAnimFrameId = requestAnimationFrame(checkLoop);
@@ -1240,7 +1211,7 @@
       const tCtx = tempCanvas.getContext('2d');
       tCtx.drawImage(cameraVideo, 0, 0, tempCanvas.width, tempCanvas.height);
       const dataUrl = tempCanvas.toDataURL('image/png');
-      const capturedCorners = isAutoCaptureMode ? lastDetectedCorners : null;
+      const capturedCorners = isAutoCaptureMode && performance.now()-lastCornerSeenAt<=450 ? latestRawCorners : null;
       stopCamera();
       loadNewImage(dataUrl, corners || capturedCorners || 'detect');
     }
@@ -1278,7 +1249,6 @@
         if (token !== imageLoadToken || busy) return;
         stopCamera();
         activePageIndex=null;currentPageDirty=true;
-        sourceFile = importedFile || sourceBlob(src);
         sourceWidth=img.width;sourceHeight=img.height;
         const ratio = Math.min(1, 4096 / Math.max(img.width, img.height));
         if (ratio < 1) {
@@ -1296,7 +1266,7 @@
         scanCanvas.classList.remove('hidden');
         openCropBtn.disabled = false;
         rotateDocBtn.disabled = false;
-        exportPdfBtn.disabled=false;exportImgBtn.disabled=false;document.getElementById('export-original-btn').disabled=false;
+        exportPdfBtn.disabled=false;exportImgBtn.disabled=false;
         renderDocument();
         if(autoCorners){
           let corners=Array.isArray(autoCorners)?autoCorners:null;
@@ -1375,11 +1345,11 @@
         ctx.putImageData(imgData, 0, 0);
       }
       document.getElementById('image-info').textContent='加工画像 '+scanCanvas.width+'×'+scanCanvas.height+' px ／ 原本 '+sourceWidth+'×'+sourceHeight+' px';
-      updateSearch();
+      
     }
 
     openCropBtn.addEventListener('click', () => {
-      cropPurpose='crop';document.getElementById('apply-crop-btn').textContent='切り抜きを確定';
+      document.getElementById('apply-crop-btn').textContent='切り抜きを確定';
       if (!originalImage) return;
       stopCamera();
       renderDocument();
@@ -1461,38 +1431,8 @@
       finally {cropDetectSpinner.classList.add('hidden');setBusy(false);}
     });
 
-    document.getElementById('region-ocr-btn').addEventListener('click',()=>{
-      if(busy||!originalImage){showToast('まず書類を取り込んでください','fa-info-circle',true);return;}
-      if(!requireKey())return;
-      openCropBtn.click();cropPurpose='ocr';document.getElementById('apply-crop-btn').textContent='この範囲を再認識';
-    });
-    async function recognizeRegion(points){
-      const x=Math.max(0,Math.floor(Math.min(...points.map(p=>p.x)))),y=Math.max(0,Math.floor(Math.min(...points.map(p=>p.y))));
-      const width=Math.min(scanCanvas.width-x,Math.ceil(Math.max(...points.map(p=>p.x)))-x),height=Math.min(scanCanvas.height-y,Math.ceil(Math.max(...points.map(p=>p.y)))-y);
-      if(width<20||height<20){showToast('範囲を広げてください','fa-info-circle',true);return;}
-      const full=ocrSourceCanvas(),c=document.createElement('canvas');c.width=width;c.height=height;
-      c.getContext('2d').drawImage(full,x,y,width,height,0,0,width,height);
-      const rev=imageRevision;setBusy(true);cropDetectSpinner.classList.remove('hidden');
-      try{
-        const result=await recognizeCanvas(c);if(rev!==imageRevision)throw new Error('画像が変更されました');
-        regionText=result.fullText;document.getElementById('region-textarea').value=regionText;
-        document.getElementById('region-result').hidden=false;cropModal.classList.add('hidden');
-        document.getElementById('region-result').scrollIntoView({behavior:'smooth',block:'center'});
-        showToast(regionText.trim()?'範囲の文字を再認識しました':'認識できる文字がありません','fa-brain',!regionText.trim());
-      }catch(err){showToast(err.message,'fa-circle-exclamation',true);}
-      finally{cropDetectSpinner.classList.add('hidden');setBusy(false);}
-    }
-    document.getElementById('region-copy-btn').addEventListener('click',async()=>{
-      if(!regionText)return;
-      try{if(navigator.clipboard)await navigator.clipboard.writeText(regionText);else{const t=document.getElementById('region-textarea');t.focus();t.select();if(!document.execCommand('copy'))throw new Error();}showToast('範囲の文字をコピーしました','fa-copy');}
-      catch(_){const t=document.getElementById('region-textarea');t.focus();t.select();showToast('選択した文字をコピーしてください','fa-info-circle',true);}
-    });
-    document.getElementById('region-add-btn').addEventListener('click',()=>{
-      if(!regionText)return;ocrTextarea.value=(ocrTextarea.value.trimEnd()+'\n'+regionText).trim();textChanged();showToast('認識文字の末尾に追加しました','fa-check');
-    });
     document.getElementById('apply-crop-btn').addEventListener('click', () => {
       const srcPts=cropCorners.map(p=>({x:p.x*scanCanvas.width/cropCanvas.width,y:p.y*scanCanvas.height/cropCanvas.height}));
-      if(cropPurpose==='ocr'){recognizeRegion(srcPts);return;}
       const result=warpDocument(srcPts);
       if(!result)return;
       originalImage=result;currentRotation=0;invalidateOCR();renderDocument();
@@ -1598,11 +1538,6 @@
         x: Math.max(0, Math.min(cropCanvas.width, pos.x)),
         y: Math.max(0, Math.min(cropCanvas.height, pos.y))
       };
-      if(cropPurpose==='ocr'){
-        const p=cropCorners[activeCornerIndex],op=cropCorners[(activeCornerIndex+2)%4];
-        const x0=Math.min(p.x,op.x),x1=Math.max(p.x,op.x),y0=Math.min(p.y,op.y),y1=Math.max(p.y,op.y);
-        cropCorners=[{x:x0,y:y0},{x:x1,y:y0},{x:x1,y:y1},{x:x0,y:y1}];
-      }
       drawCropOverlay();
     }
 
@@ -1646,6 +1581,26 @@
       if(typeof parsed.fullText!=='string'||!Array.isArray(parsed.blocks))throw new Error('OCR応答の形式が不正です');
       return parsed;
     }
+    function commitRecognition(parsed){
+        if (typeof parsed.fullText!=='string' || !Array.isArray(parsed.blocks)) throw new Error('OCR応答の形式が不正です');
+
+        const blocks=parsed.blocks.filter(b=>b&&typeof b.text==='string'&&validBox(b.box_2d));
+        currentPageDirty=true;
+        ocrState.value=parsed.fullText;ocrSourceText=parsed.fullText;
+        ocrResults=parsed.fullText.trim()?blocks:[];
+        const invalid=blocks.length!==parsed.blocks.length;
+        ocrStatus.textContent=!parsed.fullText.trim()?'文字を認識できませんでした。画像だけのPDFになります。':invalid?'文字を認識しました。一部の座標が不正なためPDFの文字位置は概略になります。':'文字認識完了。'+parsed.fullText.length+'文字をPDFに埋め込みます。';
+        if (invalid) {ocrResults=[];ocrSourceText='';}
+        showToast(parsed.fullText.trim()?'文字認識が完了しました':'認識できる文字がありません','fa-brain',!parsed.fullText.trim());
+      recognizedRevision=imageRevision;
+    }
+    async function ensureCurrentRecognition(){
+      if(recognizedRevision===imageRevision)return;
+      const rev=imageRevision;ocrStatus.textContent='PDF用の文字を認識中...';
+      const result=await recognizeCanvas(ocrSourceCanvas());
+      if(rev!==imageRevision)throw new Error('画像が変更されました');
+      commitRecognition(result);
+    }
     // OCR never silently replaces a failure with generated example text.
     execOcrBtn.addEventListener('click', async () => {
       if (busy) return;
@@ -1656,56 +1611,15 @@
       try {
         renderDocument();
         const parsed=await recognizeCanvas(ocrSourceCanvas());
-        if (typeof parsed.fullText!=='string' || !Array.isArray(parsed.blocks)) throw new Error('OCR応答の形式が不正です');
-        if (imageRevision!==rev) throw new Error('画像が変更されたため結果を破棄しました');
-        const blocks=parsed.blocks.filter(b=>b&&typeof b.text==='string'&&validBox(b.box_2d));
-        currentPageDirty=true;
-        ocrTextarea.value=parsed.fullText;ocrSourceText=parsed.fullText;
-        ocrResults=parsed.fullText.trim()?blocks:[];
-        const invalid=blocks.length!==parsed.blocks.length;
-        ocrStatus.textContent=!parsed.fullText.trim()?'文字を認識できませんでした。画像だけのPDFになります。':invalid?'文字を認識しました。一部の座標が不正なためPDFの文字位置は概略になります。':'OCR完了。誤読がないか確認してください。';
-        if (invalid) {ocrResults=[];ocrSourceText='';}
-        showToast(parsed.fullText.trim()?'文字認識が完了しました。内容を確認してください':'認識できる文字がありません','fa-brain',!parsed.fullText.trim());
+        if(imageRevision!==rev)throw new Error('画像が変更されました');
+        commitRecognition(parsed);
       } catch(err) {ocrStatus.textContent='OCR失敗：'+err.message+'。既存の文字は変更していません。';showToast(err.message,'fa-circle-exclamation',true);}
-      finally {scanBeam.classList.add('hidden');setBusy(false);execOcrBtn.innerHTML='<i class="fa-solid fa-brain"></i><span>文字認識する</span>';updateSearch();}
-    });
-
-    ocrTextarea.addEventListener('input',textChanged);
-    document.getElementById('copy-text-btn').addEventListener('click',async()=>{
-      const text=ocrTextarea.value;
-      if(!text){showToast('コピーする文字がありません','fa-info-circle',true);return;}
-      try {
-        if(navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text);
-        else {ocrTextarea.focus();ocrTextarea.select();if(!document.execCommand('copy')) throw new Error();}
-        showToast('文字をコピーしました','fa-copy');
-      }catch(_){ocrTextarea.focus();ocrTextarea.select();showToast('選択した文字を長押ししてコピーしてください','fa-info-circle',true);}
-    });
-
-    document.getElementById('clean-newlines-btn').addEventListener('click', () => {
-      if (!ocrTextarea.value) return;
-      ocrTextarea.value = ocrTextarea.value.replace(/([^\n])\n(?=[^\n])/g, '$1');
-      textChanged();
-      showToast('改行を整理しました', 'fa-check');
-    });
-
-    document.getElementById('to-bullets-btn').addEventListener('click', () => {
-      if (!ocrTextarea.value) return;
-      const lines = ocrTextarea.value.split('\n').filter(l => l.trim().length > 0);
-      ocrTextarea.value = lines.map(l => l.startsWith('・') ? l : '・ ' + l).join('\n');
-      textChanged();
-      showToast('箇条書きに整形しました', 'fa-check');
-    });
-
-    document.getElementById('clear-text-btn').addEventListener('click', () => {
-      ocrTextarea.value = '';
-      ocrResults = [];
-      textChanged();
-      showToast('テキストを消去しました', 'fa-trash');
+      finally {scanBeam.classList.add('hidden');setBusy(false);execOcrBtn.innerHTML='<i class="fa-solid fa-brain"></i><span>文字認識する</span>';}
     });
 
     const PDF_ENGINE_HTML = "<!doctype html><meta charset=\"utf-8\"><script src=\"https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js\"><\/script><script src=\"https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js\"><\/script><script>\nlet fontBytes;\nwindow.addEventListener('message',async e=>{\n if(e.source!==parent || !e.data.id)return;\n const j=e.data;\n try{\n  const doc=await PDFLib.PDFDocument.create();\n  const jobs=Array.isArray(j.pages)?j.pages:[j];\n  if(!jobs.length||jobs.length>20)throw new Error('ページ数が不正です');\n  for(const pageJob of jobs){\n  const j=pageJob;\n  const image=j.image.startsWith('data:image/png')?await doc.embedPng(j.image):await doc.embedJpg(j.image);\n  const scale=Math.min(595.28/j.width,841.89/j.height);\n  const W=j.width*scale,H=j.height*scale,page=doc.addPage([W,H]);\n  page.drawImage(image,{x:0,y:0,width:W,height:H});\n  if(j.text.trim()){\n   if(!window.fontkit)throw new Error('日本語PDFライブラリを読み込めません');\n   doc.registerFontkit(fontkit);\n   if(!fontBytes){\n    const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),45000);\n    try{const r=await fetch('https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@main/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf',{signal:ctrl.signal});if(!r.ok)throw new Error();fontBytes=await r.arrayBuffer();}\n    catch(_){throw new Error('日本語フォントを取得できません。通信を確認して再出力してください');}\n    finally{clearTimeout(timer);}\n   }\n   const font=await doc.embedFont(fontBytes,{subset:true});\n   // Exact edited text is embedded on a separate invisible text grid. No stale OCR blocks.\n   let entries=j.entries;\n   if(!entries.length){\n    const lines=j.text.split(/\\r?\\n/).filter(l=>l.trim());\n    entries=lines.map((text,i)=>({text,box_2d:[(i+.2)*1000/(lines.length+1),25,(i+.9)*1000/(lines.length+1),975]}));\n   }\n   // OCR fullText is authoritative. Blocks must cover it; otherwise use the exact fullText grid.\n   const compact=t=>t.replace(/\\s/g,'');\n   if(compact(entries.map(x=>x.text).join(''))!==compact(j.text)){\n    const lines=j.text.split(/\\r?\\n/).filter(l=>l.trim());\n    entries=lines.map((text,i)=>({text,box_2d:[(i+.2)*1000/(lines.length+1),25,(i+.9)*1000/(lines.length+1),975]}));\n   }\n   for(const entry of entries){\n    const [y0,x0,y1,x1]=entry.box_2d,text=entry.text.replace(/[\\u0000-\\u001f\\u007f]/g,' ');\n    if(!text.trim())continue;\n    const width=(x1-x0)/1000*W,height=(y1-y0)/1000*H;\n    const unit=font.widthOfTextAtSize(text,1);\n    const size=Math.max(.01,Math.min(height*.8,width/Math.max(unit,.01)));\n    page.drawText(text,{x:x0/1000*W,y:H-y1/1000*H,size,font,opacity:0});\n   }\n  }\n  }\n  const bytes=await doc.save();parent.postMessage({id:j.id,bytes},'*',[bytes.buffer]);\n }catch(err){parent.postMessage({id:j.id,error:err.message||'PDF生成に失敗しました'},'*');}\n});\nif(window.PDFLib)parent.postMessage({type:'pdf-ready'},'*');\n<\/script>";
     function snapshotPage(){
-      renderDocument();return{image:scanCanvas.toDataURL('image/jpeg',.96),width:scanCanvas.width,height:scanCanvas.height,text:ocrTextarea.value,entries:ocrSourceText===ocrTextarea.value?JSON.parse(JSON.stringify(ocrResults)):[]};
+      renderDocument();return{image:scanCanvas.toDataURL('image/jpeg',.96),width:scanCanvas.width,height:scanCanvas.height,text:ocrState.value,recognized:recognizedRevision===imageRevision,entries:ocrSourceText===ocrState.value?JSON.parse(JSON.stringify(ocrResults)):[]};
     }
     function renderPages(){
       const list=document.getElementById('pages-list');list.replaceChildren();
@@ -1721,8 +1635,8 @@
         button('編集',()=>{if(busy)return;if(originalImage&&currentPageDirty&&!confirm('現在の変更は未保存です。保存ページを開きますか？'))return;loadNewImage(page.image,null,null,()=>{
           currentFilter='original';currentRotation=0;
           document.querySelectorAll('.filter-pill').forEach(b=>{b.className='filter-pill ios-touch text-xs py-2 px-3.5 rounded-xl font-medium '+(b.dataset.filter==='original'?'active-pill bg-indigo-600 text-white':'bg-slate-800 text-slate-300 border border-slate-700/70');});
-          ocrTextarea.value=page.text;ocrSourceText=page.text;ocrResults=JSON.parse(JSON.stringify(page.entries));
-          activePageIndex=index;currentPageDirty=false;renderDocument();renderPages();ocrStatus.textContent='保存ページを開きました。修正後は「ページを更新」を押してください。';
+          ocrState.value=page.text;ocrSourceText=page.text;ocrResults=JSON.parse(JSON.stringify(page.entries));
+          recognizedRevision=page.recognized?imageRevision:-1;activePageIndex=index;currentPageDirty=false;renderDocument();renderPages();ocrStatus.textContent='保存ページを開きました。画像を調整した後は「ページを更新」を押してください。';
         });});
         button('↑',()=>movePage(index,-1),index===0);button('↓',()=>movePage(index,1),index===scanPages.length-1);
         button('削除',()=>{if(!confirm((index+1)+'ページ目を削除しますか？'))return;scanPages.splice(index,1);if(activePageIndex===index)activePageIndex=null;else if(activePageIndex>index)activePageIndex--;readyFile=null;document.getElementById('file-ready').hidden=true;renderPages();});
@@ -1735,15 +1649,21 @@
       if(activePageIndex===index)activePageIndex=target;else if(activePageIndex===target)activePageIndex=index;
       readyFile=null;document.getElementById('file-ready').hidden=true;renderPages();
     }
-    document.getElementById('add-page-btn').addEventListener('click',()=>{
+    document.getElementById('add-page-btn').addEventListener('click',async()=>{
       if(busy||!originalImage){showToast('書類を取り込んでください','fa-info-circle',true);return;}
-      if(!ocrTextarea.value.trim()&&!confirm('文字認識されていません。画像だけで追加しますか？'))return;
       if(activePageIndex===null&&scanPages.length>=20){showToast('一度に20ページまでです。PDFを保存してください','fa-info-circle',true);return;}
-      stopCamera();const page=snapshotPage();if(activePageIndex===null){scanPages.push(page);activePageIndex=scanPages.length-1;}else scanPages[activePageIndex]=page;
-      currentPageDirty=false;readyFile=null;document.getElementById('file-ready').hidden=true;renderPages();showToast('ページを保存しました','fa-check');
+      if(recognizedRevision!==imageRevision&&!requireKey())return;
+      stopCamera();setBusy(true);
+      try{
+        await ensureCurrentRecognition();
+        if(!ocrState.value.trim()&&!confirm('文字が検出されませんでした。画像だけのページとして追加しますか？'))return;
+        const page=snapshotPage();if(activePageIndex===null){scanPages.push(page);activePageIndex=scanPages.length-1;}else scanPages[activePageIndex]=page;
+        currentPageDirty=false;readyFile=null;document.getElementById('file-ready').hidden=true;renderPages();showToast('文字認識したページを保存しました','fa-check');
+      }catch(err){ocrStatus.textContent='ページ追加失敗：'+err.message;showToast(err.message,'fa-circle-exclamation',true);}
+      finally{setBusy(false);}
     });
     document.getElementById('next-page-btn').addEventListener('click',()=>{
-      if(busy)return;if(originalImage&&currentPageDirty&&!confirm('現在の画像・文字の変更はページに未保存です。次を撮影しますか？'))return;
+      if(busy)return;if(originalImage&&currentPageDirty&&!confirm('現在の画像の変更はページに未保存です。次を撮影しますか？'))return;
       startCamera();
     });
     document.getElementById('clear-pages-btn').addEventListener('click',()=>{
@@ -1784,17 +1704,20 @@
     }
     exportPdfBtn.addEventListener('click',async()=>{
       if(busy||!originalImage)return;
+      if(recognizedRevision!==imageRevision&&!requireKey())return;
       stopCamera();setBusy(true);
-      exportPdfBtn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i><span>PDF生成中...</span>';
+      exportPdfBtn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i><span>文字認識・PDF作成中...</span>';
       try {
+        await ensureCurrentRecognition();
+        if(!ocrState.value.trim()&&!confirm('文字が検出されませんでした。選択・コピーできない画像のみのPDFを作成しますか？'))return;
         renderDocument();
-        const text=ocrTextarea.value;
+        const text=ocrState.value;
         const entries=ocrSourceText===text?ocrResults:[];
         const bytes=await buildPdf({image:scanCanvas.toDataURL('image/jpeg',0.96),width:scanCanvas.width,height:scanCanvas.height,text,entries});
         presentFile(new Blob([bytes],{type:'application/pdf'}),'GoodScan_'+new Date().toISOString().slice(0,10)+'.pdf');
         showToast(text.trim()?'検索用文字付きPDFを用意しました':'画像だけのPDFを用意しました','fa-file-pdf');
-      }catch(err){showToast(err.message,'fa-circle-exclamation',true);}
-      finally{setBusy(false);exportPdfBtn.innerHTML='<div class="flex items-center gap-1.5"><i class="fa-solid fa-file-pdf text-sm text-red-300"></i><span>PDFで渡す</span></div><span class="text-[14px] font-normal text-indigo-200">高画質画像＋検索文字</span>';updateSearch();}
+      }catch(err){ocrStatus.textContent='PDF作成失敗：'+err.message;showToast(err.message,'fa-circle-exclamation',true);}
+      finally{setBusy(false);exportPdfBtn.innerHTML='<div class="flex items-center gap-1.5"><i class="fa-solid fa-file-pdf text-sm text-red-300"></i><span>PDFで渡す</span></div><span class="text-[14px] font-normal text-indigo-200">画像＋選択・コピー用文字</span>';}
     });
 
     document.getElementById('export-img-btn').addEventListener('click', () => {
@@ -1807,30 +1730,6 @@
         showToast('高画質画像を用意しました', 'fa-image');
       }, 'image/jpeg',0.96);
     });
-
-    const simInput=document.getElementById('sim-search-input');
-    const simCount=document.getElementById('sim-search-count');
-    const searchOverlay=document.createElement('canvas');
-    searchOverlay.className='absolute inset-0 w-full h-full object-contain z-20 pointer-events-none';
-    scanCanvas.parentElement.appendChild(searchOverlay);
-    function updateSearch(){
-      const query=simInput.value.trim().toLowerCase();
-      searchOverlay.width=scanCanvas.width;searchOverlay.height=scanCanvas.height;
-      searchOverlay.classList.toggle('hidden',!!videoStream);
-      let count=0;
-      if(query && originalImage){
-        count=ocrTextarea.value.toLowerCase().split(query).length-1;
-        if(ocrSourceText===ocrTextarea.value){
-          const c=searchOverlay.getContext('2d');c.fillStyle='rgba(250,204,21,0.35)';c.strokeStyle='#eab308';c.lineWidth=3;
-          for(const item of ocrResults){if(item.text.toLowerCase().includes(query)&&validBox(item.box_2d)){
-            const [y0,x0,y1,x1]=item.box_2d;const x=x0/1000*scanCanvas.width,y=y0/1000*scanCanvas.height,w=(x1-x0)/1000*scanCanvas.width,h=(y1-y0)/1000*scanCanvas.height;
-            c.fillRect(x,y,w,h);c.strokeRect(x,y,w,h);
-          }}
-        }
-      }
-      simCount.textContent=count+'件一致';simCount.classList.toggle('text-amber-400',count>0);
-    }
-    simInput.addEventListener('input',updateSearch);
 
     // Settings Modal
     const settingsModal = document.getElementById('settings-modal');
