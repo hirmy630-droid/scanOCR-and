@@ -211,7 +211,7 @@
 .text-slate-950{color:#020617}
 .text-sm{font-size:.875rem;line-height:1.25rem}
 .text-white{color:#fff}
-.text-xs{font-size:.75rem;line-height:1rem}
+.text-xs{font-size:14px;line-height:1.25rem}
 .to-sky-400{--to:#38bdf8}
 .to-sky-500{--to:#0ea5e9}
 .to-sky-600{--to:#0284c7}
@@ -356,12 +356,22 @@
     body>div.sticky.bottom-0>button{gap:0}
     body>div.sticky.bottom-0>button>div{width:36px;height:36px}
 
-    #scan-actions{position:absolute;left:8px;right:8px;bottom:8px;z-index:35;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:6px;background:rgba(2,6,23,.88);border-radius:14px;backdrop-filter:blur(10px)}
-    #scan-actions button{min-height:46px;padding:6px 4px;font-size:14px;font-weight:700;border-radius:10px;line-height:1.2}
+    #scan-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+    #scan-actions button{min-height:34px;height:34px;padding:4px;font-size:14px;font-weight:700;border-radius:10px;line-height:1.2}
     #add-page-btn{background:#f59e0b;color:#020617}
     #next-page-btn{background:#334155;color:#fff}
     #delete-current-btn{background:#7f1d1d;color:#fecaca}
     #pages-panel #pages-status{display:none}
+
+    #filter-list{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+    #filter-list button{min-width:0;padding:5px 2px;font-size:14px;white-space:nowrap;justify-content:center}
+    #scan-canvas{cursor:zoom-in}
+    #image-fullscreen{position:fixed;inset:0;z-index:100;background:#020617;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+    #viewer-toolbar{display:flex;align-items:center;justify-content:space-between;gap:5px;padding:8px;flex:none}
+    #viewer-toolbar button{font-size:14px;min-height:36px;padding:5px 10px;border-radius:8px;background:#334155;color:#fff}
+    #viewer-zoom-label{font-size:14px;min-width:44px;text-align:center}
+    #viewer-stage{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+    #viewer-canvas{position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;max-height:none;pointer-events:none}
   </style>
 </head>
 <body class="min-h-[100dvh] flex flex-col justify-between overflow-x-hidden">
@@ -447,11 +457,6 @@
       <!-- Captured Document Canvas -->
       <canvas id="scan-canvas" class="hidden w-full h-full object-contain z-10"></canvas>
 
-      <div id="scan-actions" hidden>
-        <button id="add-page-btn" type="button">保存</button>
-        <button id="next-page-btn" type="button">次の撮影</button>
-        <button id="delete-current-btn" type="button">削除</button>
-      </div>
       <!-- Laser Beam for OCR -->
       <div id="scan-beam" class="hidden absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_#22d3ee] scanner-beam z-20 pointer-events-none"></div>
 
@@ -485,22 +490,27 @@
       </div>
     </div>
 
+      <div id="scan-actions" hidden>
+        <button id="add-page-btn" type="button">保存</button>
+        <button id="next-page-btn" type="button">次の撮影</button>
+        <button id="delete-current-btn" type="button">削除</button>
+      </div>
+
     <p id="quality-status" role="status" class="text-xs text-slate-400"></p>
     <p hidden id="image-info" class="text-xs text-slate-400" role="status">画像未取込</p>
     <!-- Filters List -->
     <div id="filter-list" class="grid grid-cols-2 gap-2">
       <button data-filter="clean" type="button" class="filter-pill ios-touch flex-shrink-0 text-xs py-2 px-3.5 rounded-xl font-medium bg-slate-800 text-slate-300 border border-slate-700/70 flex items-center gap-1.5">
-        <i class="fa-solid fa-wand-magic-sparkles text-[14px]"></i>
-        <span>書類クッキリ</span>
+        <span>書類</span>
       </button>
       <button data-filter="original" type="button" class="filter-pill active-pill ios-touch flex-shrink-0 text-xs py-2 px-3.5 rounded-xl font-medium bg-indigo-600 text-white">
-        カラー原本
+        原本
       </button>
       <button data-filter="bw" type="button" class="filter-pill ios-touch flex-shrink-0 text-xs py-2 px-3.5 rounded-xl font-medium bg-slate-800 text-slate-300 border border-slate-700/70">
-        モノクロ二値
+        モノ
       </button>
       <button data-filter="gray" type="button" class="filter-pill ios-touch flex-shrink-0 text-xs py-2 px-3.5 rounded-xl font-medium bg-slate-800 text-slate-300 border border-slate-700/70">
-        グレースケール
+        グレー
       </button>
     </div>
 
@@ -682,6 +692,17 @@
     </button>
   </div>
 
+  <div id="image-fullscreen" hidden role="dialog" aria-modal="true" aria-label="画像の拡大表示">
+    <div id="viewer-toolbar">
+      <button id="viewer-close-btn" type="button">閉じる</button>
+      <button id="viewer-minus-btn" type="button" aria-label="縮小">−</button>
+      <span id="viewer-zoom-label" aria-live="polite">100%</span>
+      <button id="viewer-plus-btn" type="button" aria-label="拡大">＋</button>
+      <button id="viewer-reset-btn" type="button">全体</button>
+    </div>
+    <div id="viewer-stage"><canvas id="viewer-canvas"></canvas></div>
+  </div>
+
   <script>
     (() => {
     "use strict";
@@ -789,6 +810,7 @@
     function setBusy(value) {
       busy = value;
       document.querySelectorAll('button').forEach(b => {
+        if(b.id.startsWith('viewer-'))return;
         if (!b.dataset.oldDisabled && value) b.dataset.oldDisabled = b.disabled ? 'yes' : 'no';
         if (value) b.disabled = true;
         else if(b.dataset.oldDisabled!==undefined) { b.disabled = b.dataset.oldDisabled === 'yes'; delete b.dataset.oldDisabled; }
@@ -1823,6 +1845,72 @@
       try{await ensureCurrentRecognition();}catch(err){ocrStatus.textContent='OCR失敗：'+err.message;showToast(err.message,'fa-circle-exclamation',true);}
       finally{scanBeam.classList.add('hidden');setBusy(false);automaticOCRTask=null;}
     }
+
+    // Viewer uses a copy: zoom/pan never changes the scan or OCR coordinates.
+    const viewer=document.getElementById('image-fullscreen'),viewerStage=document.getElementById('viewer-stage'),viewerCanvas=document.getElementById('viewer-canvas');
+    let viewerZoom=1,viewerX=0,viewerY=0,viewerFit=1,viewerGesture=null,viewerOldOverflow='',viewerOldFocus=null;
+    const viewerPointers=new Map();
+    function drawViewer(){
+      const r=viewerStage.getBoundingClientRect(),w=viewerCanvas.width*viewerFit*viewerZoom,h=viewerCanvas.height*viewerFit*viewerZoom;
+      viewerX=w<=r.width?(r.width-w)/2:Math.max(r.width-w,Math.min(0,viewerX));
+      viewerY=h<=r.height?(r.height-h)/2:Math.max(r.height-h,Math.min(0,viewerY));
+      viewerCanvas.style.transform=`translate(${viewerX}px,${viewerY}px) scale(${viewerFit*viewerZoom})`;
+      document.getElementById('viewer-zoom-label').textContent=Math.round(viewerZoom*100)+'%';
+    }
+    function resetViewer(){
+      const r=viewerStage.getBoundingClientRect();
+      viewerFit=Math.min(r.width/viewerCanvas.width,r.height/viewerCanvas.height);viewerZoom=1;viewerX=0;viewerY=0;drawViewer();
+    }
+    function zoomViewer(value,x,y){
+      const r=viewerStage.getBoundingClientRect();x=x??r.width/2;y=y??r.height/2;
+      const next=Math.max(1,Math.min(8,value)),ratio=next/viewerZoom;
+      viewerX=x-(x-viewerX)*ratio;viewerY=y-(y-viewerY)*ratio;viewerZoom=next;drawViewer();
+    }
+    function openViewer(){
+      if(!originalImage||videoStream||!scanCanvas.width||!scanCanvas.height)return;
+      viewerOldFocus=document.activeElement;viewerOldOverflow=document.body.style.overflow;
+      viewerCanvas.width=scanCanvas.width;viewerCanvas.height=scanCanvas.height;
+      viewerCanvas.getContext('2d').drawImage(scanCanvas,0,0);viewer.hidden=false;document.body.style.overflow='hidden';resetViewer();
+      document.getElementById('viewer-close-btn').focus();
+    }
+    function closeViewer(){
+      if(viewer.hidden)return;viewer.hidden=true;document.body.style.overflow=viewerOldOverflow;
+      viewerPointers.clear();viewerGesture=null;viewerCanvas.width=1;viewerCanvas.height=1;viewerOldFocus?.focus();
+    }
+    function rebaseViewerGesture(){
+      const points=[...viewerPointers.values()];
+      if(!points.length){viewerGesture=null;return;}
+      const a=points[0],b=points[1]||a;
+      viewerGesture={x:(a.x+b.x)/2,y:(a.y+b.y)/2,d:Math.hypot(a.x-b.x,a.y-b.y),zoom:viewerZoom,left:viewerX,top:viewerY,count:points.length};
+    }
+    function viewerPoint(e){const r=viewerStage.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
+    viewerStage.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;e.preventDefault();viewerStage.setPointerCapture(e.pointerId);viewerPointers.set(e.pointerId,viewerPoint(e));rebaseViewerGesture();});
+    viewerStage.addEventListener('pointermove',e=>{
+      if(!viewerPointers.has(e.pointerId)||!viewerGesture)return;e.preventDefault();viewerPointers.set(e.pointerId,viewerPoint(e));
+      const points=[...viewerPointers.values()],a=points[0],b=points[1]||a,g=viewerGesture,x=(a.x+b.x)/2,y=(a.y+b.y)/2;
+      const z=points.length>1&&g.d>0?Math.max(1,Math.min(8,g.zoom*Math.hypot(a.x-b.x,a.y-b.y)/g.d)):g.zoom,ratio=z/g.zoom;
+      viewerX=x-(g.x-g.left)*ratio;viewerY=y-(g.y-g.top)*ratio;viewerZoom=z;drawViewer();
+    });
+    const endViewerPointer=e=>{viewerPointers.delete(e.pointerId);rebaseViewerGesture();};
+    ['pointerup','pointercancel','lostpointercapture'].forEach(name=>viewerStage.addEventListener(name,endViewerPointer));
+    viewerStage.addEventListener('wheel',e=>{e.preventDefault();const p=viewerPoint(e);zoomViewer(viewerZoom*Math.exp(-e.deltaY*.002),p.x,p.y);},{passive:false});
+    viewerStage.addEventListener('dblclick',e=>{const p=viewerPoint(e);if(viewerZoom>1)resetViewer();else zoomViewer(2,p.x,p.y);});
+    scanCanvas.addEventListener('click',openViewer);
+    document.getElementById('viewer-close-btn').addEventListener('click',closeViewer);
+    document.getElementById('viewer-minus-btn').addEventListener('click',()=>zoomViewer(viewerZoom/1.5));
+    document.getElementById('viewer-plus-btn').addEventListener('click',()=>zoomViewer(viewerZoom*1.5));
+    document.getElementById('viewer-reset-btn').addEventListener('click',resetViewer);
+    document.addEventListener('keydown',e=>{
+      if(viewer.hidden)return;
+      if(e.key==='Escape'){e.preventDefault();closeViewer();}
+      if(e.key==='Tab'){
+        const controls=['viewer-close-btn','viewer-minus-btn','viewer-plus-btn','viewer-reset-btn'].map(id=>document.getElementById(id));
+        const i=controls.indexOf(document.activeElement);e.preventDefault();controls[(i+(e.shiftKey?-1:1)+controls.length)%controls.length].focus();
+      }
+    });
+    window.addEventListener('resize',()=>{if(!viewer.hidden){resetViewer();rebaseViewerGesture();}});
+    window.addEventListener('pagehide',closeViewer);
+
     // Settings Modal
     const settingsModal = document.getElementById('settings-modal');
     const apiKeyInput = document.getElementById('api-key-input');
