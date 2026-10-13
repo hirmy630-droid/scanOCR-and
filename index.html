@@ -355,6 +355,13 @@
     body>div.sticky.bottom-0{padding-top:4px;gap:2px}
     body>div.sticky.bottom-0>button{gap:0}
     body>div.sticky.bottom-0>button>div{width:36px;height:36px}
+
+    #scan-actions{position:absolute;left:8px;right:8px;bottom:8px;z-index:35;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:6px;background:rgba(2,6,23,.88);border-radius:14px;backdrop-filter:blur(10px)}
+    #scan-actions button{min-height:46px;padding:6px 4px;font-size:14px;font-weight:700;border-radius:10px;line-height:1.2}
+    #add-page-btn{background:#f59e0b;color:#020617}
+    #next-page-btn{background:#334155;color:#fff}
+    #delete-current-btn{background:#7f1d1d;color:#fecaca}
+    #pages-panel #pages-status{display:none}
   </style>
 </head>
 <body class="min-h-[100dvh] flex flex-col justify-between overflow-x-hidden">
@@ -416,7 +423,7 @@
         </div>
         <h3 class="text-sm font-bold text-slate-200">書類を取り込んで開始</h3>
         <p class="text-xs text-slate-400 mt-1 max-w-[240px] leading-relaxed">
-          約1.5秒静止すると自動撮影。
+          約1秒静止すると自動撮影。
         </p>
       </div>
 
@@ -440,6 +447,11 @@
       <!-- Captured Document Canvas -->
       <canvas id="scan-canvas" class="hidden w-full h-full object-contain z-10"></canvas>
 
+      <div id="scan-actions" hidden>
+        <button id="add-page-btn" type="button">保存</button>
+        <button id="next-page-btn" type="button">次の撮影</button>
+        <button id="delete-current-btn" type="button">削除</button>
+      </div>
       <!-- Laser Beam for OCR -->
       <div id="scan-beam" class="hidden absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_#22d3ee] scanner-beam z-20 pointer-events-none"></div>
 
@@ -532,18 +544,16 @@
       </div>
     </div>
 
-    <details id="pages-panel" class="bg-slate-900 border border-slate-700 rounded-2xl p-3 space-y-2">
-      <summary id="pages-summary">連続スキャン</summary>
+    <section id="pages-panel" class="bg-slate-900 border border-slate-700 rounded-2xl p-3 space-y-2">
+      <p id="pages-summary">連続スキャン</p>
       <p id="pages-status" role="status">連続スキャン：0ページ</p>
       <p>最大20枚。閉じる前にPDF保存。</p>
-      <div class="grid grid-cols-2 gap-2">
-        <button id="add-page-btn" type="button" class="bg-indigo-600 rounded-xl py-3">ページ追加</button>
-        <button id="next-page-btn" type="button" class="bg-slate-800 rounded-xl py-3">次を撮影</button>
-      </div>
       <div id="pages-list"></div>
+      <div class="grid grid-cols-2 gap-2">
       <button id="export-pages-btn" type="button" class="w-full bg-indigo-600 rounded-xl py-3">まとめてPDF</button>
       <button id="clear-pages-btn" type="button" class="w-full bg-slate-800 rounded-xl py-3">全削除</button>
-    </details>
+      </div>
+    </section>
   </main>
 
   <!-- iOS Toast -->
@@ -911,7 +921,8 @@
     });
 
     function setCameraUI(active){
-      const ids=['exec-ocr-btn','export-pdf-btn','export-img-btn','add-page-btn','open-crop-btn','rotate-doc-btn'];
+      document.getElementById('scan-actions').hidden=active||!originalImage;
+      const ids=['exec-ocr-btn','export-pdf-btn','export-img-btn','add-page-btn','delete-current-btn','open-crop-btn','rotate-doc-btn'];
       for(const id of ids){const button=document.getElementById(id);if(active){button.dataset.cameraDisabled=button.disabled?'yes':'no';button.disabled=true;}else if(button.dataset.cameraDisabled){button.disabled=button.dataset.cameraDisabled==='yes';delete button.dataset.cameraDisabled;}}
     }
     async function startCamera() {
@@ -1141,8 +1152,8 @@
 
     function startCameraAnalysis() {
       let lastCheck = 0;
-      const REQUIRED_STABLE_MS = 1500; // Shutter is independent of corner detection.
-      const STABILITY_THRESHOLD = 9.0;
+      const REQUIRED_STABLE_MS = 1000; // Shutter is independent of corner detection.
+      const STABILITY_THRESHOLD = 16.0;
       const startedAt = performance.now();
       let captureStarted = false;
       let unstableSince = 0;
@@ -1186,11 +1197,12 @@
               try{detected=detectDocument(curData,tempCanvas.width,tempCanvas.height);}catch(_){/* Detection must not disable the shutter. */}
               const tracked=updateCornerTracking(detected,now);
               if (prevFrameData) {
-                let diff = 0;
+                let diff=0,brightnessDelta=0;
                 for (let i = 0; i < curData.length; i += 4) {
-                  diff += Math.abs(curData[i] - prevFrameData[i]);
+                  const delta=curData[i]-prevFrameData[i];diff+=Math.abs(delta);brightnessDelta+=delta;
                 }
-                const avgDiff = diff / (curData.length / 4);
+                const pixels=curData.length/4;
+                const avgDiff=Math.max(0,diff/pixels-.75*Math.abs(brightnessDelta/pixels));
 
                 if (now-startedAt>=700 && !tracked.jump && avgDiff < STABILITY_THRESHOLD) {
                   unstableSince=0;
@@ -1209,14 +1221,14 @@
                     capturePhoto(detected);
                     return;
                   } else {
-                    autoCaptureText.textContent = '動かさないでください...';
+                    autoCaptureText.textContent = 'そのまま持ってください…';
                   }
                 } else {
-                  const briefShake=now-startedAt>=700&&!tracked.jump&&avgDiff<24&&stableSince>0;
+                  const briefShake=now-startedAt>=700&&!tracked.jump&&avgDiff<32&&stableSince>0;
                   if(briefShake){
                     if(!unstableSince)unstableSince=now;
                     stableSince+=checkDelta; // Pause instead of counting a shaky frame as stable.
-                    if(now-unstableSince<=450){
+                    if(now-unstableSince<=650){
                       autoCaptureText.textContent='枠を保持しています。少し静止してください';
                     }else{
                       stableSince=0;unstableSince=0;autoCaptureBarWrap.classList.add('hidden');
@@ -1321,6 +1333,7 @@
             if(result){originalImage=result;invalidateOCR();renderDocument();showToast('書類を自動で切り抜き、台形補正しました','fa-check');}
           }else{showToast('取り込みました。四隅が見つからないためトリミングで調整してください','fa-crop-simple',true);}
         }
+        document.getElementById('scan-actions').hidden=false;document.getElementById('delete-current-btn').disabled=false;
         updateQuality();renderPages();if(onReady)onReady();
         if(autoCorners&&!onReady){
           if(appSettings.photoSave&&!importedFile)preparePhotoSave();
@@ -1635,7 +1648,7 @@
         ocrStatus.textContent=!parsed.fullText.trim()?'文字未検出':invalid?'認識完了（文字位置は概略）':'認識完了：'+parsed.fullText.length+'文字';
         if (invalid) {ocrResults=[];ocrSourceText='';}
         showToast(parsed.fullText.trim()?'文字認識が完了しました':'認識できる文字がありません','fa-brain',!parsed.fullText.trim());
-      recognizedRevision=imageRevision;
+      recognizedRevision=imageRevision;renderPages();
     }
     async function ensureCurrentRecognition(){
       if(!appSettings.autoOCR||recognizedRevision===imageRevision)return;
@@ -1668,7 +1681,7 @@
       const list=document.getElementById('pages-list');list.replaceChildren();
       document.getElementById('pages-summary').textContent='連続スキャン（'+scanPages.length+'枚）';
       document.getElementById('pages-status').textContent='連続スキャン：'+scanPages.length+'ページ'+(activePageIndex!==null?' ／ '+(activePageIndex+1)+'ページ目を編集中':'');
-      document.getElementById('add-page-btn').textContent=activePageIndex===null?'ページ追加':'編集中のページを更新';
+      document.getElementById('add-page-btn').textContent=activePageIndex===null?'保存':currentPageDirty?'更新保存':'保存済み';
       scanPages.forEach((page,index)=>{
         const row=document.createElement('div');row.className='page-row';
         const thumb=document.createElement('img');thumb.src=page.image;thumb.alt=(index+1)+'ページ目';thumb.loading='lazy';row.appendChild(thumb);
@@ -1709,6 +1722,17 @@
     document.getElementById('next-page-btn').addEventListener('click',()=>{
       if(busy)return;if(originalImage&&currentPageDirty&&!confirm('現在の画像の変更はページに未保存です。次を撮影しますか？'))return;
       startCamera();
+    });
+    document.getElementById('delete-current-btn').addEventListener('click',()=>{
+      if(busy||!originalImage||!confirm('この画像を削除しますか？'))return;
+      stopCamera();imageLoadToken++;
+      if(activePageIndex!==null)scanPages.splice(activePageIndex,1);
+      activePageIndex=null;originalImage=null;currentRotation=0;sourceWidth=0;sourceHeight=0;
+      invalidateOCR();scanCanvas.width=1;scanCanvas.height=1;scanCanvas.classList.add('hidden');emptyState.classList.remove('hidden');
+      document.getElementById('scan-actions').hidden=true;
+      document.getElementById('quality-status').textContent='';document.getElementById('image-info').textContent='';
+      openCropBtn.disabled=true;rotateDocBtn.disabled=true;exportPdfBtn.disabled=true;exportImgBtn.disabled=true;
+      renderPages();showToast('画像を削除しました','fa-trash');
     });
     document.getElementById('clear-pages-btn').addEventListener('click',()=>{
       if(busy||!scanPages.length||!confirm('保存ページをすべて削除しますか？'))return;
