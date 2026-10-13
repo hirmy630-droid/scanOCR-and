@@ -512,10 +512,10 @@
 
     <!-- Filters List -->
     <div id="filter-list" class="grid grid-cols-2 gap-2">
-      <button data-filter="clean" type="button" class="filter-pill ios-touch flex-shrink-0 text-xs py-2 px-3.5 rounded-xl font-medium bg-slate-800 text-slate-300 border border-slate-700/70 flex items-center gap-1.5">
+      <button data-filter="clean" type="button" class="filter-pill active-pill ios-touch flex-shrink-0 text-xs py-2 px-3.5 rounded-xl font-medium bg-indigo-600 text-white flex items-center gap-1.5">
         <span>書類</span>
       </button>
-      <button data-filter="original" type="button" class="filter-pill active-pill ios-touch flex-shrink-0 text-xs py-2 px-3.5 rounded-xl font-medium bg-indigo-600 text-white">
+      <button data-filter="original" type="button" class="filter-pill ios-touch flex-shrink-0 text-xs py-2 px-3.5 rounded-xl font-medium bg-slate-800 text-slate-300 border border-slate-700/70">
         原本
       </button>
       <button data-filter="bw" type="button" class="filter-pill ios-touch flex-shrink-0 text-xs py-2 px-3.5 rounded-xl font-medium bg-slate-800 text-slate-300 border border-slate-700/70">
@@ -736,7 +736,7 @@
 
     // App State Variables
     let originalImage = null;
-    let currentFilter = 'original';
+    let currentFilter = 'clean';
     let currentRotation = 0;
     let ocrResults = [];
     let videoStream = null;
@@ -1143,13 +1143,16 @@
           let edgeCovered=0;
           for(let k=2;k<18;k++){
             const t=k/20,x=a.x+(b.x-a.x)*t,y=a.y+(b.y-a.y)*t;
-            const d=Math.abs(sample(x+nx*3,y+ny*3)-sample(x-nx*3,y-ny*3));
+            let d=0;const band=Math.max(3,Math.round(Math.min(w,h)*.02));
+            for(let offset=-band;offset<=band;offset+=2)d=Math.max(d,Math.abs(sample(x+nx*(offset+3),y+ny*(offset+3))-sample(x+nx*(offset-3),y+ny*(offset-3))));
             contrast+=Math.min(d,100);total++;if(d>=6){covered++;edgeCovered++;}
           }
           if(edgeCovered<7)return;
         }
         if(covered/total<.65||contrast/total<8)return;
-        const score=fraction*(contrast/total)*(covered/total);
+        const sides=quad.map((p,i)=>Math.hypot(p.x-quad[(i+1)%4].x,p.y-quad[(i+1)%4].y));
+        const balance=Math.min(sides[0],sides[2])/Math.max(sides[0],sides[2])*Math.min(sides[1],sides[3])/Math.max(sides[1],sides[3]);
+        const score=fraction*fraction*(contrast/total)*(covered/total)*balance*balance;
         if(!best||score>best.score)best={score,corners:quad.map(p=>({x:p.x/w,y:p.y/h}))};
       }
       function components(mask,diagonal=false){
@@ -1169,6 +1172,16 @@
           }
           if(!border&&q.length>(diagonal?30:w*h*.07))inspect(points);
         }
+      }
+      // Shadowed neutral paper often remains less saturated than a colored background.
+      // Keep brightness and edge checks; this is an extra candidate, not a forced crop.
+      for(const saturation of [.18,.22,.26,.30]){
+        const mask=new Uint8Array(w*h);
+        for(let i=0;i<w*h;i++){
+          const k=i*4,max=Math.max(data[k],data[k+1],data[k+2]),min=Math.min(data[k],data[k+1],data[k+2]);
+          mask[i]=gray[i]>lo+(hi-lo)*.18&&(max-min)/Math.max(1,max)<saturation?1:0;
+        }
+        components(mask);
       }
       for(const f of [.25,.45,.65,.8,.9,.96]){
         const mask=new Uint8Array(w*h),threshold=lo+(hi-lo)*f;
@@ -1305,14 +1318,14 @@
                 const drift=anchor?Math.max(...detected.map((p,i)=>Math.hypot(p.x-anchor[i].x,p.y-anchor[i].y))):0;
                 const detail=documentDetail(data,tempCanvas.width,tempCanvas.height,detected);
                 if(detail.hasInk&&detail.sharpness<45){reset();message='ピントを確認中…';}
-                else if(motion<8&&shift<.018&&drift<.025){
+                else if(motion<14&&shift<.028&&drift<.09){
                   if(!anchor){anchor=detected.map(p=>({...p}));stableMs=0;}else stableMs+=elapsed;pauseMs=0;
                   message='書類を確認中…';ready=stableMs>=600;
-                }else if(motion<12&&shift<.03&&drift<.035&&stableMs>0&&pauseMs<220){pauseMs+=elapsed;message='動きが落ち着くのを待っています';}
+                }else if(motion<24&&shift<.055&&drift<.12&&anchor&&pauseMs<900){pauseMs+=elapsed;message='動きが落ち着くのを待っています';}
                 else{reset();message='動きが落ち着くのを待っています';}
               }
               autoCaptureText.textContent=message;
-              if(autoCaptureBarWrap){autoCaptureBarWrap.classList.toggle('hidden',!stableMs);autoCaptureBar.style.width=Math.min(100,Math.round(stableMs/600*100))+'%';}
+              if(autoCaptureBarWrap){autoCaptureBarWrap.classList.toggle('hidden',!anchor);autoCaptureBar.style.width=(anchor?Math.max(5,Math.min(100,Math.round(stableMs/600*100))):0)+'%';}
               if(ready&&!busy){
                 // Recheck the actual full-resolution frame, not old preview corners.
                 if(capturePhoto(detected,true)){captureStarted=true;return;}
@@ -1431,6 +1444,7 @@
         }
         uncroppedImage=null;document.getElementById('restore-scan-btn').hidden=true;
         currentRotation = 0;
+        if(!onReady)selectFilter('clean');
         invalidateOCR();
         emptyState.classList.add('hidden');
         scanCanvas.classList.remove('hidden');
@@ -1475,6 +1489,12 @@
       showToast('90°回転しました', 'fa-rotate-right');
     });
 
+    function selectFilter(filter){
+      currentFilter=filter;
+      document.querySelectorAll('.filter-pill').forEach(button=>{
+        button.className='filter-pill ios-touch flex-shrink-0 text-xs py-2 px-3.5 rounded-xl font-medium '+(button.dataset.filter===filter?'active-pill bg-indigo-600 text-white':'bg-slate-800 text-slate-300 border border-slate-700/70');
+      });
+    }
     document.querySelectorAll('.filter-pill').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.filter-pill').forEach(b => {
