@@ -1,11 +1,11 @@
 {
-  "name": "明日の服装",
-  "short_name": "服装",
-  "description": "指定地域の気象データから最適な服装を判定",
-  "start_url": "index.html",
+  "name": "GoodScan AI",
+  "short_name": "GoodScan",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "icon-192.png",
