@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#020617">
+  <meta name="theme-color" content="#030508">
   <title>GoodScan AI - 書類スキャン & GoodNotes文字認識</title>
 
   <!-- PWA Manifest & Icons -->
@@ -19,51 +19,51 @@
 
   <style>
 #settings-modal{z-index:70}#toast{z-index:90}
-*,::before,::after{box-sizing:border-box;border:0 solid #334155}body{margin:0}button,input,textarea{font:inherit}button{cursor:pointer;background:none}button:disabled{opacity:.4;pointer-events:none}p,h2,h3{margin:0}canvas,video{display:block}
+*,::before,::after{box-sizing:border-box;border:0 solid #23364a}body{margin:0}button,input,textarea{font:inherit}button{cursor:pointer;background:none}button:disabled{opacity:.4;pointer-events:none}p,h2,h3{margin:0}canvas,video{display:block}
 .-translate-x-1\/2{transform:translateX(-50%)}
 .absolute{position:absolute}
-.active\:bg-indigo-700:active{background-color:#4338ca}
-.active\:bg-slate-700:active{background-color:#334155}
+.active\:bg-indigo-700:active{background-color:#102e52}
+.active\:bg-slate-700:active{background-color:#23364a}
 .active\:opacity-80:active{opacity:0.8}
 .active\:opacity-90:active{opacity:0.9}
 .aspect-\[3\/4\]{aspect-ratio:3/4}
 .backdrop-blur-md{backdrop-filter:blur(12px)}
 .backdrop-blur-xl{backdrop-filter:blur(24px)}
-.bg-amber-500{background-color:#f59e0b}
-.bg-amber-500\/20{background-color:rgba(245,158,11,0.2)}
+.bg-amber-500{background-color:#244f78}
+.bg-amber-500\/20{background-color:rgba(36,79,120,0.2)}
 .bg-black\/60{background-color:#000}
 .bg-black\/70{background-color:#000}
 .bg-black\/75{background-color:#000}
 .bg-black\/80{background-color:#000}
 .bg-black\/95{background-color:#000}
-.bg-emerald-400{background-color:#34d399}
+.bg-emerald-400{background-color:#91b4d4}
 .bg-gradient-to-r{background-image:linear-gradient(to right,var(--from),var(--to))}
 .bg-gradient-to-tr{background-image:linear-gradient(to top right,var(--from),var(--to))}
-.bg-indigo-500\/20{background-color:rgba(99,102,241,0.2)}
-.bg-indigo-600{background-color:#4f46e5}
-.bg-slate-800{background-color:#1e293b}
-.bg-slate-800\/70{background-color:rgba(30,41,59,0.7)}
-.bg-slate-800\/80{background-color:rgba(30,41,59,0.8)}
-.bg-slate-800\/90{background-color:rgba(30,41,59,0.9)}
-.bg-slate-900{background-color:#0f172a}
-.bg-slate-900\/90{background-color:rgba(15,23,42,0.9)}
-.bg-slate-900\/95{background-color:rgba(15,23,42,0.95)}
-.bg-slate-950{background-color:#020617}
+.bg-indigo-500\/20{background-color:rgba(69,118,163,0.2)}
+.bg-indigo-600{background-color:#163a65}
+.bg-slate-800{background-color:#102033}
+.bg-slate-800\/70{background-color:rgba(16,32,51,0.7)}
+.bg-slate-800\/80{background-color:rgba(16,32,51,0.8)}
+.bg-slate-800\/90{background-color:rgba(16,32,51,0.9)}
+.bg-slate-900{background-color:#080f19}
+.bg-slate-900\/90{background-color:rgba(8,15,25,0.9)}
+.bg-slate-900\/95{background-color:rgba(8,15,25,0.95)}
+.bg-slate-950{background-color:#030508}
 .bg-slate-950\/90{background-color:rgba(2,6,23,0.9)}
 .bg-white{background-color:#fff}
 .border{border-width:1px}
 .border-4{border-width:4px}
-.border-amber-500\/30{border-color:rgba(245,158,11,0.3)}
+.border-amber-500\/30{border-color:rgba(36,79,120,0.3)}
 .border-b{border-bottom-width:1px}
-.border-indigo-500{border-color:#6366f1}
-.border-indigo-500\/30{border-color:rgba(99,102,241,0.3)}
-.border-indigo-500\/40{border-color:rgba(99,102,241,0.4)}
-.border-slate-700{border-color:#334155}
-.border-slate-700\/60{border-color:rgba(51,65,85,0.6)}
-.border-slate-700\/70{border-color:rgba(51,65,85,0.7)}
-.border-slate-800{border-color:#1e293b}
-.border-slate-800\/80{border-color:rgba(30,41,59,0.8)}
-.border-slate-800\/90{border-color:rgba(30,41,59,0.9)}
+.border-indigo-500{border-color:#4576a3}
+.border-indigo-500\/30{border-color:rgba(69,118,163,0.3)}
+.border-indigo-500\/40{border-color:rgba(69,118,163,0.4)}
+.border-slate-700{border-color:#23364a}
+.border-slate-700\/60{border-color:rgba(35,54,74,0.6)}
+.border-slate-700\/70{border-color:rgba(35,54,74,0.7)}
+.border-slate-800{border-color:#102033}
+.border-slate-800\/80{border-color:rgba(16,32,51,0.8)}
+.border-slate-800\/90{border-color:rgba(16,32,51,0.9)}
 .border-t{border-top-width:1px}
 .border-white\/20{border-color:#fff}
 .bottom-0{bottom:0}
@@ -79,16 +79,16 @@
 .flex-1{flex:1 1 0%}
 .flex-col{flex-direction:column}
 .flex-shrink-0{flex-shrink:0}
-.focus\:border-amber-400:focus{border-color:#fbbf24}
-.focus\:border-indigo-500:focus{border-color:#6366f1}
+.focus\:border-amber-400:focus{border-color:#a6c7e4}
+.focus\:border-indigo-500:focus{border-color:#4576a3}
 .focus\:outline-none:focus{outline:none}
 .font-bold{font-weight:700}
 .font-medium{font-weight:500}
 .font-mono{font-family:ui-monospace,monospace}
 .font-normal{font-weight:400}
 .font-semibold{font-weight:600}
-.from-indigo-500{--from:#6366f1}
-.from-indigo-600{--from:#4f46e5}
+.from-indigo-500{--from:#4576a3}
+.from-indigo-600{--from:#163a65}
 .from-transparent{--from:transparent}
 .gap-1{gap:0.25rem}
 .gap-1\.5{gap:0.375rem}
@@ -192,29 +192,29 @@
 .text-\[10px\]{font-size:14px}
 .text-\[11px\]{font-size:14px}
 .text-\[9px\]{font-size:14px}
-.text-amber-300{color:#fcd34d}
-.text-amber-400{color:#fbbf24}
+.text-amber-300{color:#c2d8ea}
+.text-amber-400{color:#a6c7e4}
 .text-base{font-size:1rem;line-height:1.5rem}
 .text-center{text-align:center}
-.text-emerald-400{color:#34d399}
+.text-emerald-400{color:#91b4d4}
 .text-indigo-200{color:#c7d2fe}
-.text-indigo-300{color:#a5b4fc}
-.text-indigo-400{color:#818cf8}
+.text-indigo-300{color:#b5cde2}
+.text-indigo-400{color:#91b4d4}
 .text-red-300{color:#fca5a5}
 .text-rose-300{color:#fda4af}
 .text-rose-400{color:#fb7185}
-.text-sky-400{color:#38bdf8}
+.text-sky-400{color:#5d91be}
 .text-slate-100{color:#f1f5f9}
 .text-slate-200{color:#e2e8f0}
 .text-slate-300{color:#cbd5e1}
 .text-slate-400{color:#94a3b8}
-.text-slate-950{color:#020617}
+.text-slate-950{color:#030508}
 .text-sm{font-size:.875rem;line-height:1.25rem}
 .text-white{color:#fff}
 .text-xs{font-size:14px;line-height:1.25rem}
-.to-sky-400{--to:#38bdf8}
-.to-sky-500{--to:#0ea5e9}
-.to-sky-600{--to:#0284c7}
+.to-sky-400{--to:#5d91be}
+.to-sky-500{--to:#1c4873}
+.to-sky-600{--to:#15375a}
 .to-transparent{--to:transparent}
 .top-0{top:0}
 .top-2\.5{top:0.625rem}
@@ -223,8 +223,8 @@
 .touch-none{touch-action:none}
 .tracking-tight{letter-spacing:-.025em}
 .transition-all{transition:all .15s}
-.via-cyan-400{--via:#22d3ee}
-.via-indigo-600{--via:#4f46e5}
+.via-cyan-400{--via:#88b8df}
+.via-indigo-600{--via:#163a65}
 .w-0{width:0rem}
 .w-1{width:0.25rem}
 .w-11{width:2.75rem}
@@ -254,7 +254,7 @@
 
     html, body {
       min-height: 100dvh;
-      background-color: #020617;
+      background-color: #030508;
       color: #f8fafc;
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
       -webkit-tap-highlight-color: transparent;
@@ -273,7 +273,7 @@
     }
 
     .ios-glass {
-      background: rgba(15, 23, 42, 0.94);
+      background: rgba(8, 15, 25, 0.94);
       backdrop-filter: blur(24px);
       -webkit-backdrop-filter: blur(24px);
     }
@@ -327,11 +327,11 @@
     summary{min-height:44px;cursor:pointer;display:flex;align-items:center}
     @media(min-width:600px){main>div.aspect-\[3\/4\]{height:450px}}
 
-    #quality-status{padding:10px;border:1px solid #475569;border-radius:12px;line-height:1.6}
-    .page-row{display:flex;gap:10px;margin:10px 0;padding:8px;border:1px solid #334155;border-radius:12px}
-    .page-row img{width:52px;height:70px;object-fit:contain;flex:none;background:#020617}
+    #quality-status{padding:10px;border:1px solid #3d5268;border-radius:12px;line-height:1.6}
+    .page-row{display:flex;gap:10px;margin:10px 0;padding:8px;border:1px solid #23364a;border-radius:12px}
+    .page-row img{width:52px;height:70px;object-fit:contain;flex:none;background:#030508}
     .page-controls{display:flex;gap:6px;flex-wrap:wrap}
-    .page-controls button{padding:6px 10px;background:#1e293b;border-radius:8px;font-size:14px;min-width:44px}
+    .page-controls button{padding:6px 10px;background:#102033;border-radius:8px;font-size:14px;min-width:44px}
     #pages-panel p{font-size:14px;line-height:1.6}
 
     body{line-height:1.35;padding-bottom:92px}
@@ -349,8 +349,8 @@
     .page-row img{width:44px;height:56px}
     #settings-modal>div{padding:14px}
     #settings-modal .space-y-4>*+*,#settings-modal>div>*+*{margin-top:8px}
-    .setting-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;font-size:14px;line-height:1.35;border-bottom:1px solid #334155}
-    .setting-row input{width:22px;height:22px;flex:none;accent-color:#6366f1}
+    .setting-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;font-size:14px;line-height:1.35;border-bottom:1px solid #23364a}
+    .setting-row input{width:22px;height:22px;flex:none;accent-color:#4576a3}
     #photo-save-preview{user-select:auto;-webkit-user-select:auto;-webkit-touch-callout:default}
     body>div.sticky.bottom-0{padding-top:4px;gap:2px}
     body>div.sticky.bottom-0>button{gap:0}
@@ -358,22 +358,22 @@
 
     #scan-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
     #scan-actions button{min-height:34px;height:34px;padding:4px;font-size:14px;font-weight:700;border-radius:10px;line-height:1.2}
-    #add-page-btn{background:#f59e0b;color:#020617}
-    #next-page-btn{background:#334155;color:#fff}
-    #delete-current-btn{background:#7f1d1d;color:#fecaca}
+    #add-page-btn{background:#244f78;color:#030508}
+    #next-page-btn{background:#23364a;color:#fff}
+    #delete-current-btn{background:#111c29;color:#d2dde8}
     #pages-panel #pages-status{display:none}
 
     #filter-list{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
     #filter-list button{min-width:0;padding:5px 2px;font-size:14px;white-space:nowrap;justify-content:center}
     #scan-canvas{cursor:zoom-in}
-    #image-fullscreen{position:fixed;inset:0;z-index:100;background:#020617;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+    #image-fullscreen{position:fixed;inset:0;z-index:100;background:#030508;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
     #viewer-toolbar{display:flex;align-items:center;justify-content:space-between;gap:5px;padding:8px;flex:none}
-    #viewer-toolbar button{font-size:14px;min-height:36px;padding:5px 10px;border-radius:8px;background:#334155;color:#fff}
+    #viewer-toolbar button{font-size:14px;min-height:36px;padding:5px 10px;border-radius:8px;background:#23364a;color:#fff}
     #viewer-zoom-label{font-size:14px;min-width:44px;text-align:center}
     #viewer-stage{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
     #viewer-canvas{position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;max-height:none;pointer-events:none}
 
-    #scan-tool-group{border-radius:0;overflow:hidden;border:1px solid #334155;box-shadow:0 3px 6px rgba(0,0,0,.25)}
+    #scan-tool-group{border-radius:0;overflow:hidden;border:1px solid #23364a;box-shadow:0 3px 6px rgba(0,0,0,.25)}
     #scan-tool-group #filter-list{gap:0}
     #scan-tool-group button{border-radius:0;border:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -2px 0 rgba(0,0,0,.22)}
     #scan-actions button,#scan-tool-group #filter-list button{background-image:linear-gradient(rgba(255,255,255,.08),rgba(0,0,0,.12))}
@@ -383,6 +383,26 @@
     #scan-actions button{box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -2px 0 rgba(0,0,0,.22)}
     #scan-actions button:active{box-shadow:inset 0 2px 4px rgba(0,0,0,.35)}
     #camera-preview #camera-stream,#camera-preview #camera-overlay-canvas,#camera-preview #scan-canvas{position:absolute;inset:0;width:100%;height:100%;min-width:0;min-height:0;max-width:none;max-height:none;object-fit:contain;object-position:center;flex:none}
+
+    /* Black and dark-blue application chrome. Image pixels are untouched. */
+    html,body{background:#030508;color:#eaf1f8}
+    header.ios-glass,body>div.sticky.bottom-0{background:rgba(3,5,8,.97);border-color:#182a3e}
+    #camera-preview,#pages-panel,#settings-modal>div,#guide-modal>div,#file-ready{background-color:#080f19;border-color:#243b52}
+    #scan-actions #add-page-btn{background-color:#244f78;color:#f3f7fc}
+    #scan-actions #next-page-btn{background-color:#142b43;color:#eaf1f8}
+    #scan-actions #delete-current-btn{background-color:#0c1622;color:#becddd;border:1px solid #304760}
+    .bg-amber-500{color:#f3f7fc}
+    #filter-list .active-pill{background-color:#1e466f;color:#f3f7fc}
+    #filter-list button:not(.active-pill){background-color:#0c1929;color:#b7c9db}
+    #exec-ocr-btn,#export-pdf-btn,#export-pages-btn,#share-ready-btn,#save-settings-btn{background-color:#193e66;background-image:linear-gradient(180deg,#214e7b,#143253);color:#f3f7fc}
+    #take-photo-btn{background:#071321;border-color:#78a5cc}
+    #take-photo-btn>div{background:linear-gradient(180deg,#255683,#15395d)}
+    #auto-capture-indicator{background:rgba(5,13,23,.96);border-color:#385f84}
+    #auto-capture-bar{background-image:linear-gradient(90deg,#356b9b,#87b6dc)}
+    #cancel-ocr-btn{background:#152a41 !important;color:#eaf1f8;border:1px solid #507da5}
+    .page-row,.page-controls button,#viewer-toolbar button{background-color:#0c1b2c;border-color:#2b435d}
+    #image-fullscreen{background:#020407}
+    .setting-row input{accent-color:#527fab}
   </style>
 </head>
 <body class="min-h-[100dvh] flex flex-col justify-between overflow-x-hidden">
@@ -420,7 +440,7 @@
       <p class="text-[14px] text-slate-400 leading-relaxed">
         OCR画像をGoogleへ送信します。利用枠により有料。キーは端末保存。
       </p>
-      <label class="setting-row"><span>撮影後に自動文字認識</span><input id="auto-ocr-setting" type="checkbox"></label>
+      <label class="setting-row"><span>PDF作成時に自動文字認識</span><input id="auto-ocr-setting" type="checkbox"></label>
       <label class="setting-row"><span>シャッター音</span><input id="shutter-sound-setting" type="checkbox"></label>
       <label class="setting-row"><span>撮影後に写真保存ボタンを表示</span><input id="photo-save-setting" type="checkbox"></label>
       <p class="text-xs text-slate-400">写真への保存は最後に操作が必要です。</p>
@@ -534,7 +554,7 @@
     </button>
 
     </section>
-    <button id="cancel-ocr-btn" type="button" hidden class="text-xs bg-rose-900 text-white" style="min-height:34px;padding:4px 8px;border-radius:0;background:#7f1d1d">文字認識を停止</button>
+    <button id="cancel-ocr-btn" type="button" hidden class="text-xs bg-rose-900 text-white" style="min-height:34px;padding:4px 8px;border-radius:0;background:#152a41">文字認識を停止</button>
     <button id="restore-scan-btn" type="button" hidden class="text-xs bg-slate-800 text-slate-200" style="min-height:32px;padding:4px 8px;border-radius:0">切抜前に戻す</button>
     <p id="quality-status" role="status" class="text-xs text-slate-400"></p>
     <p hidden id="image-info" class="text-xs text-slate-400" role="status">画像未取込</p>
@@ -578,6 +598,7 @@
       <p id="pages-status" role="status">連続スキャン：0ページ</p>
       <p>最大20枚。保存した画像はこの端末に残ります。</p>
       <p id="page-storage-status" role="status" class="text-xs text-slate-400">保存画像を読み込み中…</p>
+      <button id="recognize-pages-btn" type="button" class="w-full bg-slate-800 text-xs" style="min-height:34px;padding:4px 8px;border-radius:0">まとめて文字認識</button>
       <div id="pages-list"></div>
       <div class="grid grid-cols-2 gap-2">
       <button id="export-pages-btn" type="button" class="w-full bg-indigo-600 rounded-xl py-3">まとめてPDF</button>
@@ -795,7 +816,7 @@
     const cropCtx = cropCanvas.getContext('2d');
     const cropDetectSpinner = document.getElementById('crop-detect-spinner');
     const emptyState = document.getElementById('empty-state');
-    const cameraVideo = document.getElementById('camera-stream');
+    let cameraVideo = document.getElementById('camera-stream');
     const cameraOverlayCanvas = document.getElementById('camera-overlay-canvas');
     const cameraControls = document.getElementById('camera-controls');
     const autoCaptureIndicator = document.getElementById('auto-capture-indicator');
@@ -1005,6 +1026,15 @@
       for(const id of ids){const button=document.getElementById(id);if(active){button.dataset.cameraDisabled=button.disabled?'yes':'no';button.disabled=true;}else if(button.dataset.cameraDisabled){button.disabled=button.dataset.cameraDisabled==='yes';delete button.dataset.cameraDisabled;}}
       updateOCRButton();
     }
+    function rebuildCameraVideo(){
+      const fresh=document.createElement('video');fresh.id='camera-stream';
+      fresh.className='hidden w-full h-full object-contain';
+      fresh.autoplay=true;fresh.muted=true;fresh.playsInline=true;
+      fresh.setAttribute('playsinline','');fresh.setAttribute('webkit-playsinline','');
+      fresh.style.cssText='position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:contain;object-position:center';
+      // Release the old native video surface as well as its stream on every restart.
+      cameraVideo.replaceWith(fresh);cameraVideo=fresh;
+    }
     async function startCamera() {
       if (busy || cameraStarting) return;
       prepareShutterSound();
@@ -1012,6 +1042,7 @@
       stopCamera();
       const token = cameraToken;
       try {
+        rebuildCameraVideo();
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           throw new Error('カメラはHTTPS環境で実行してください');
         }
@@ -1322,12 +1353,12 @@
                 if(detail.hasInk&&detail.sharpness<45){reset();message='ピントを確認中…';}
                 else if(motion<14&&shift<.028&&drift<.09){
                   if(!anchor){anchor=detected.map(p=>({...p}));stableMs=0;}else stableMs+=elapsed;pauseMs=0;
-                  message='書類を確認中…';ready=stableMs>=450;
+                  message='書類を確認中…';ready=stableMs>=350;
                 }else if(motion<24&&shift<.055&&drift<.12&&anchor&&pauseMs<900){pauseMs+=elapsed;message='動きが落ち着くのを待っています';}
                 else{reset();message='動きが落ち着くのを待っています';}
               }
               autoCaptureText.textContent=message;
-              if(autoCaptureBarWrap){autoCaptureBarWrap.classList.toggle('hidden',!anchor);autoCaptureBar.style.width=(anchor?Math.max(5,Math.min(100,Math.round(stableMs/450*100))):0)+'%';}
+              if(autoCaptureBarWrap){autoCaptureBarWrap.classList.toggle('hidden',!anchor);autoCaptureBar.style.width=(anchor?Math.max(5,Math.min(100,Math.round(stableMs/350*100))):0)+'%';}
               if(ready&&!busy){
                 // Recheck the actual full-resolution frame, not old preview corners.
                 if(capturePhoto(detected,true)){captureStarted=true;return;}
@@ -1469,7 +1500,7 @@
         updateQuality();renderPages();if(onReady)onReady();
         if(autoCorners&&!onReady){
           if(appSettings.photoSave&&!importedFile)preparePhotoSave();
-          if(appSettings.autoOCR)automaticOCRTask=startAutomaticOCR();
+          if(appSettings.autoOCR)ocrStatus.textContent='未認識';
         }
       };
       img.src = src;
@@ -1480,7 +1511,7 @@
       originalImage=uncroppedImage;uncroppedImage=null;currentRotation=0;invalidateOCR();renderDocument();updateQuality();
       document.getElementById('restore-scan-btn').hidden=true;renderPages();
       showToast('切抜前の画像に戻しました','fa-image');
-      if(appSettings.autoOCR)automaticOCRTask=startAutomaticOCR();
+      if(appSettings.autoOCR)ocrStatus.textContent='未認識';
     });
 
     rotateDocBtn.addEventListener('click', () => {
@@ -1504,7 +1535,8 @@
         });
         btn.className = 'filter-pill active-pill ios-touch flex-shrink-0 text-xs py-2 px-3.5 rounded-xl font-medium bg-indigo-600 text-white flex items-center gap-1.5';
         currentFilter = btn.dataset.filter;
-        renderDocument();
+        if(originalImage){currentPageDirty=true;readyFile=null;document.getElementById('file-ready').hidden=true;}
+        renderDocument();renderPages();
       });
     });
 
@@ -1864,7 +1896,7 @@
               const order=meta.result?.ids||[];
               if(!Array.isArray(order)||order.length>20||new Set(order).size!==order.length||(!meta.result&&all.size))throw new Error();
               const pages=order.map(id=>all.get(id));
-              if(pages.some(p=>!p||typeof p.image!=='string'||!/^data:image\/(jpeg|png);base64,/.test(p.image)||typeof p.text!=='string'||!Array.isArray(p.entries)||!Number.isFinite(p.width)||!Number.isFinite(p.height)||p.width<1||p.height<1||p.width>8192||p.height>8192))throw new Error();
+              if(pages.some(p=>!p||typeof p.image!=='string'||!/^data:image\/(jpeg|png);base64,/.test(p.image)||typeof p.text!=='string'||!Array.isArray(p.entries)||!Number.isFinite(p.width)||!Number.isFinite(p.height)||p.width<1||p.height<1||p.width>8192||p.height>8192||(p.ocrImage!==undefined&&(typeof p.ocrImage!=='string'||!/^data:image\/(jpeg|png);base64,/.test(p.ocrImage)))))throw new Error();
               if(meta.result&&(!Number.isInteger(meta.result.version)||meta.result.version<0))throw new Error();
               pageDatabase=db;pageStoreRevision=meta.result?.version||0;knownStoredPages=all;
               db.onversionchange=()=>{db.close();pageDatabase=null;document.getElementById('page-storage-status').textContent='保存領域が変更されました。開き直してください。';};
@@ -1904,25 +1936,83 @@
       }catch(err){showToast(err.message,'fa-circle-exclamation',true);}finally{setBusy(false);}
     }
     function snapshotPage(){
-      renderDocument();return{id:activePageIndex!==null?scanPages[activePageIndex].id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2),image:scanCanvas.toDataURL('image/jpeg',.96),width:scanCanvas.width,height:scanCanvas.height,text:ocrState.value,recognized:recognizedRevision===imageRevision,entries:ocrSourceText===ocrState.value?JSON.parse(JSON.stringify(ocrResults)):[]};
+      renderDocument();
+      const page={id:activePageIndex!==null?scanPages[activePageIndex].id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2),image:scanCanvas.toDataURL('image/jpeg',.96),width:scanCanvas.width,height:scanCanvas.height,text:ocrState.value,recognized:recognizedRevision===imageRevision,entries:ocrSourceText===ocrState.value?JSON.parse(JSON.stringify(ocrResults)):[],filter:currentFilter};
+      // Preserve unfiltered pixels for later OCR even when the preview uses the document filter.
+      if(currentFilter!=='original')page.ocrImage=ocrSourceCanvas().toDataURL('image/jpeg',.98);
+      if(automaticOCRBlockedRevision===imageRevision)page.ocrError=ocrStatus.textContent;
+      return page;
     }
+    function storedPageCanvas(page){
+      return new Promise((resolve,reject)=>{
+        const image=new Image();image.onerror=()=>reject(new Error('保存画像を開けません'));
+        image.onload=()=>{const c=document.createElement('canvas');c.width=page.width;c.height=page.height;c.getContext('2d').drawImage(image,0,0,c.width,c.height);resolve(c);};
+        image.src=page.ocrImage||page.image;
+      });
+    }
+    async function recognizeSavedPages(){
+      if(!scanPages.some(p=>!p.recognized))return;
+      if(!requireKey())throw new Error('APIキーを設定してください');
+      setRecognitionProgress(true);
+      try{
+        for(let index=0;index<scanPages.length;index++){
+          if(ocrCancelRequested||document.hidden)throw new Error('文字認識を停止しました');
+          const page=scanPages[index];if(page.recognized)continue;
+          ocrStatus.textContent='文字認識 '+(index+1)+'／'+scanPages.length;
+          const source=await storedPageCanvas(page);
+          if(ocrCancelRequested||document.hidden)throw new Error('文字認識を停止しました');
+          const check=document.createElement('canvas'),r=Math.min(1,640/Math.max(source.width,source.height));
+          check.width=Math.max(1,Math.round(source.width*r));check.height=Math.max(1,Math.round(source.height*r));
+          const context=check.getContext('2d',{willReadFrequently:true});context.drawImage(source,0,0,check.width,check.height);
+          const quality=documentDetail(context.getImageData(0,0,check.width,check.height).data,check.width,check.height,[{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:0,y:1}]);
+          let updated;
+          if(quality.mean<45||quality.sharpness<45){updated={...page,ocrError:'ボケ・暗さ・輪郭を確認してください'};}
+          else{
+            if(ocrCancelRequested||document.hidden)throw new Error('文字認識を停止しました');
+            const result=await recognizeCanvas(source);
+            if(ocrCancelRequested||document.hidden)throw new Error('文字認識を停止しました');
+            updated={...page,text:result.fullText,recognized:true,entries:result.blocks.filter(b=>b&&typeof b.text==='string'&&validBox(b.box_2d))};delete updated.ocrError;
+          }
+          const next=scanPages.slice();next[index]=updated;
+          await persistPageList(next);scanPages.splice(0,scanPages.length,...next);
+          if(activePageIndex===index&&!currentPageDirty){
+            ocrState.value=updated.text;ocrSourceText=updated.text;ocrResults=JSON.parse(JSON.stringify(updated.entries));
+            recognizedRevision=updated.recognized?imageRevision:-1;ocrFailureRevision=updated.ocrError?imageRevision:-1;automaticOCRBlockedRevision=updated.ocrError?imageRevision:-1;updateOCRButton();
+          }
+          renderPages();
+        }
+        const pending=scanPages.filter(p=>!p.recognized).length;
+        ocrStatus.textContent=pending?'認識済み '+(scanPages.length-pending)+'枚 ／ 要確認 '+pending+'枚':'保存画像の文字認識が完了しました';
+        if(pending)throw new Error('要確認の画像があります。開いて撮り直すか、再認識してください');
+      }finally{setRecognitionProgress(false);}
+    }
+    document.getElementById('recognize-pages-btn').addEventListener('click',async()=>{
+      if(busy)return;
+      if(originalImage&&(activePageIndex===null||currentPageDirty)){
+        if(activePageIndex===null&&scanPages.length>=20){if(!confirm('保存済みの20枚を処理します。現在の未保存画像は含めません。'))return;}
+        else if(!(await saveCurrentPage()))return;
+      }
+      if(!scanPages.length)return;stopCamera();setBusy(true);
+      try{await recognizeSavedPages();}catch(err){ocrStatus.textContent=err.message;showToast(err.message,'fa-circle-exclamation',true);}finally{setBusy(false);renderPages();}
+    });
     function renderPages(){
       const list=document.getElementById('pages-list');list.replaceChildren();
       document.getElementById('pages-summary').textContent='保存画像（'+scanPages.length+'枚）';
       document.getElementById('pages-status').textContent='連続スキャン：'+scanPages.length+'ページ'+(activePageIndex!==null?' ／ '+(activePageIndex+1)+'ページ目を編集中':'');
       document.getElementById('add-page-btn').textContent=activePageIndex===null?'保存':currentPageDirty?'更新保存':'保存済み';
+      document.getElementById('recognize-pages-btn').disabled=busy||(!scanPages.some(p=>!p.recognized)&&!(originalImage&&recognizedRevision!==imageRevision));
       scanPages.forEach((page,index)=>{
         const row=document.createElement('div');row.className='page-row';
         const thumb=document.createElement('img');thumb.src=page.image;thumb.alt=(index+1)+'ページ目';thumb.loading='lazy';row.appendChild(thumb);
         const content=document.createElement('div');content.style.flex='1';
-        const label=document.createElement('p');label.textContent=(index+1)+'ページ ／ '+(page.text.trim()?'文字あり':'文字なし');content.appendChild(label);
+        const label=document.createElement('p');label.textContent=(index+1)+'ページ ／ '+(page.recognized?(page.text.trim()?'文字あり':'文字未検出'):page.ocrError?'要確認':'未認識');content.appendChild(label);
         const controls=document.createElement('div');controls.className='page-controls';
         function button(text,fn,disabled=false){const b=document.createElement('button');b.type='button';b.textContent=text;b.disabled=disabled;b.addEventListener('click',fn);controls.appendChild(b);}
-        const openSavedPage=()=>{if(busy)return;if(originalImage&&currentPageDirty&&!confirm('現在の変更は未保存です。保存ページを開きますか？'))return;loadNewImage(page.image,null,null,()=>{
-          currentFilter='original';currentRotation=0;
-          document.querySelectorAll('.filter-pill').forEach(b=>{b.className='filter-pill ios-touch text-xs py-2 px-3.5 rounded-xl font-medium '+(b.dataset.filter==='original'?'active-pill bg-indigo-600 text-white':'bg-slate-800 text-slate-300 border border-slate-700/70');});
+        const openSavedPage=()=>{if(busy)return;if(originalImage&&currentPageDirty&&!confirm('現在の変更は未保存です。保存ページを開きますか？'))return;loadNewImage(page.ocrImage||page.image,null,null,()=>{
+          currentFilter=page.ocrImage?(page.filter||'clean'):'original';currentRotation=0;
+          document.querySelectorAll('.filter-pill').forEach(b=>{b.className='filter-pill ios-touch text-xs py-2 px-3.5 rounded-xl font-medium '+(b.dataset.filter===currentFilter?'active-pill bg-indigo-600 text-white':'bg-slate-800 text-slate-300 border border-slate-700/70');});
           ocrState.value=page.text;ocrSourceText=page.text;ocrResults=JSON.parse(JSON.stringify(page.entries));
-          recognizedRevision=page.recognized?imageRevision:-1;ocrFailureRevision=page.recognized&&!page.text.trim()?imageRevision:-1;activePageIndex=index;currentPageDirty=false;renderDocument();renderPages();updateOCRButton();ocrStatus.textContent='保存画像を表示';
+          recognizedRevision=page.recognized?imageRevision:-1;ocrFailureRevision=page.ocrError||(page.recognized&&!page.text.trim())?imageRevision:-1;automaticOCRBlockedRevision=page.ocrError?imageRevision:-1;activePageIndex=index;currentPageDirty=false;renderDocument();renderPages();updateOCRButton();ocrStatus.textContent='保存画像を表示';
         });};
         button('開く',openSavedPage);thumb.style.cursor='pointer';thumb.tabIndex=0;thumb.setAttribute('role','button');thumb.setAttribute('aria-label',(index+1)+'ページ目を開く');thumb.addEventListener('click',openSavedPage);thumb.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openSavedPage();}});
         button('↑',()=>movePage(index,-1),index===0);button('↓',()=>movePage(index,1),index===scanPages.length-1);
@@ -1939,25 +2029,32 @@
         readyFile=null;document.getElementById('file-ready').hidden=true;renderPages();
       }catch(err){showToast(err.message,'fa-circle-exclamation',true);}finally{setBusy(false);}
     }
-    document.getElementById('add-page-btn').addEventListener('click',async()=>{
+    async function saveCurrentPage(){
+      if(busy||!originalImage)return false;
       if(!storageProtectionRequested&&navigator.storage?.persist){storageProtectionRequested=true;try{navigator.storage.persist().catch(()=>{});}catch(_){}}
       await pageStorageReady;
-      if(busy||!originalImage){showToast('書類を取り込んでください','fa-info-circle',true);return;}
-      if(activePageIndex===null&&scanPages.length>=20){showToast('一度に20ページまでです。PDFを保存してください','fa-info-circle',true);return;}
-      if(appSettings.autoOCR&&recognizedRevision!==imageRevision&&!requireKey())return;
+      if(busy||!originalImage)return false;
+      if(activePageIndex!==null&&!currentPageDirty)return true;
+      if(activePageIndex===null&&scanPages.length>=20){showToast('一度に20ページまでです。PDFを保存してください','fa-info-circle',true);return false;}
+
       stopCamera();setBusy(true);
       try{
-        await ensureCurrentRecognition();
-        if(appSettings.autoOCR&&!ocrState.value.trim()&&!confirm('文字未検出。画像のみで追加しますか？'))return;
+
         const page=snapshotPage(),next=scanPages.slice(),savedIndex=activePageIndex===null?next.length:activePageIndex;next[savedIndex]=page;
         await persistPageList(next);scanPages.splice(0,scanPages.length,...next);activePageIndex=savedIndex;
-        currentPageDirty=false;readyFile=null;document.getElementById('file-ready').hidden=true;renderPages();showToast('ページを保存しました','fa-check');
-      }catch(err){ocrStatus.textContent='ページ追加失敗：'+err.message;showToast(err.message,'fa-circle-exclamation',true);}
+        currentPageDirty=false;readyFile=null;document.getElementById('file-ready').hidden=true;renderPages();showToast('ページを保存しました','fa-check');return true;
+      }catch(err){ocrStatus.textContent='ページ保存失敗：'+err.message;showToast(err.message,'fa-circle-exclamation',true);return false;}
       finally{setBusy(false);}
+    }
+    document.getElementById('add-page-btn').addEventListener('click',async()=>{
+      if(!originalImage){showToast('書類を取り込んでください','fa-info-circle',true);return;}
+      await saveCurrentPage();
     });
-    document.getElementById('next-page-btn').addEventListener('click',()=>{
-      if(busy)return;if(originalImage&&currentPageDirty&&!confirm('現在の画像の変更はページに未保存です。次を撮影しますか？'))return;
-      startCamera();
+    document.getElementById('next-page-btn').addEventListener('click',async()=>{
+      if(busy||cameraStarting)return;
+      prepareShutterSound();
+      if(originalImage&&!(await saveCurrentPage()))return;
+      await startCamera();
     });
     document.getElementById('delete-current-btn').addEventListener('click',async()=>{
       if(busy||!originalImage||!confirm('この画像を削除しますか？'))return;
@@ -1981,10 +2078,14 @@
       }catch(err){showToast(err.message,'fa-circle-exclamation',true);}finally{setBusy(false);}
     });
     document.getElementById('export-pages-btn').addEventListener('click',async()=>{
-      if(busy||!scanPages.length){showToast('まずページを追加してください','fa-info-circle',true);return;}
-      if(originalImage&&currentPageDirty&&!confirm('現在の変更はページに未保存です。保存済みのページだけでPDFを作りますか？'))return;
+      if(busy)return;
+      if(originalImage&&(activePageIndex===null||currentPageDirty)){
+        if(activePageIndex===null&&scanPages.length>=20){if(!confirm('保存済みの20枚を処理します。現在の未保存画像は含めません。'))return;}
+        else if(!(await saveCurrentPage()))return;
+      }
+      if(!scanPages.length){showToast('まずページを追加してください','fa-info-circle',true);return;}
       stopCamera();setBusy(true);
-      try{const bytes=await buildPdf({pages:scanPages});presentFile(new Blob([bytes],{type:'application/pdf'}),'GoodScan_'+scanPages.length+'pages_'+Date.now()+'.pdf');showToast('複数ページPDFを用意しました','fa-file-pdf');}
+      try{if(appSettings.autoOCR){await recognizeSavedPages();if(scanPages.some(p=>!p.text.trim())&&!confirm('文字未検出の画像があります。画像のみのページを含めてPDFを作りますか？'))return;}const bytes=await buildPdf({pages:scanPages});presentFile(new Blob([bytes],{type:'application/pdf'}),'GoodScan_'+scanPages.length+'pages_'+Date.now()+'.pdf');showToast('複数ページPDFを用意しました','fa-file-pdf');}
       catch(err){showToast(err.message,'fa-circle-exclamation',true);}finally{setBusy(false);}
     });
     window.addEventListener('beforeunload',event=>{if(busy||(originalImage&&currentPageDirty)){event.preventDefault();event.returnValue='';}});
@@ -2019,6 +2120,7 @@
       exportPdfBtn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i><span>'+(appSettings.autoOCR?'文字認識・PDF作成中…':'PDF作成中…')+'</span>';
       try {
         await ensureCurrentRecognition();
+        if(activePageIndex!==null&&currentPageDirty){const next=scanPages.slice();next[activePageIndex]=snapshotPage();await persistPageList(next);scanPages.splice(0,scanPages.length,...next);currentPageDirty=false;renderPages();}
         if(appSettings.autoOCR&&!ocrState.value.trim()&&!confirm('文字未検出。画像のみのPDFを作りますか？'))return;
         renderDocument();
         const text=ocrState.value;
@@ -2163,7 +2265,7 @@
         showToast('端末保存できません。この画面内だけに適用します', 'fa-triangle-exclamation', true);
       }
       updateOCRButton();prepareShutterSound();
-      if(!wasAuto&&preferences.autoOCR&&originalImage&&recognizedRevision!==imageRevision&&!busy)automaticOCRTask=startAutomaticOCR();
+      if(!wasAuto&&preferences.autoOCR&&originalImage&&recognizedRevision!==imageRevision&&!busy)ocrStatus.textContent='未認識';
     });
     document.getElementById('clear-api-key-btn').addEventListener('click', () => {
       apiKeyMemory = '';
