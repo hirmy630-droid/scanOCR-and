@@ -372,6 +372,16 @@
     #viewer-zoom-label{font-size:14px;min-width:44px;text-align:center}
     #viewer-stage{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
     #viewer-canvas{position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;max-height:none;pointer-events:none}
+
+    #scan-tool-group{border-radius:0;overflow:hidden;border:1px solid #334155;box-shadow:0 3px 6px rgba(0,0,0,.25)}
+    #scan-tool-group #filter-list{gap:0}
+    #scan-tool-group button{border-radius:0;border:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -2px 0 rgba(0,0,0,.22)}
+    #scan-actions button,#scan-tool-group #filter-list button{background-image:linear-gradient(rgba(255,255,255,.08),rgba(0,0,0,.12))}
+    #scan-tool-group #filter-list button+button{border-left:1px solid rgba(2,6,23,.35)}
+    #scan-tool-group #exec-ocr-btn{margin:0;min-height:44px;padding:8px}
+    #scan-tool-group button:active{box-shadow:inset 0 2px 4px rgba(0,0,0,.35)}
+    #scan-actions button{box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -2px 0 rgba(0,0,0,.22)}
+    #scan-actions button:active{box-shadow:inset 0 2px 4px rgba(0,0,0,.35)}
   </style>
 </head>
 <body class="min-h-[100dvh] flex flex-col justify-between overflow-x-hidden">
@@ -410,6 +420,7 @@
         OCR画像をGoogleへ送信します。利用枠により有料。キーは端末保存。
       </p>
       <label class="setting-row"><span>撮影後に自動文字認識</span><input id="auto-ocr-setting" type="checkbox"></label>
+      <label class="setting-row"><span>シャッター音</span><input id="shutter-sound-setting" type="checkbox"></label>
       <label class="setting-row"><span>撮影後に写真保存ボタンを表示</span><input id="photo-save-setting" type="checkbox"></label>
       <p class="text-xs text-slate-400">写真への保存は最後に操作が必要です。</p>
       <input type="password" autocomplete="off" spellcheck="false" id="api-key-input" placeholder="AIzaSy..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono">
@@ -433,7 +444,7 @@
         </div>
         <h3 class="text-sm font-bold text-slate-200">書類を取り込んで開始</h3>
         <p class="text-xs text-slate-400 mt-1 max-w-[240px] leading-relaxed">
-          約1秒静止すると自動撮影。
+          書類を認識すると自動撮影。
         </p>
       </div>
 
@@ -496,8 +507,9 @@
         <button id="delete-current-btn" type="button">削除</button>
       </div>
 
-    <p id="quality-status" role="status" class="text-xs text-slate-400"></p>
-    <p hidden id="image-info" class="text-xs text-slate-400" role="status">画像未取込</p>
+    <section id="scan-tool-group" aria-label="スキャン操作">
+
+
     <!-- Filters List -->
     <div id="filter-list" class="grid grid-cols-2 gap-2">
       <button data-filter="clean" type="button" class="filter-pill ios-touch flex-shrink-0 text-xs py-2 px-3.5 rounded-xl font-medium bg-slate-800 text-slate-300 border border-slate-700/70 flex items-center gap-1.5">
@@ -519,6 +531,10 @@
       <i class="fa-solid fa-brain"></i>
       <span>文字認識する</span>
     </button>
+
+    </section>
+    <p id="quality-status" role="status" class="text-xs text-slate-400"></p>
+    <p hidden id="image-info" class="text-xs text-slate-400" role="status">画像未取込</p>
 
     <div id="file-ready" hidden class="bg-slate-900 border border-slate-700 rounded-2xl p-3 space-y-2">
       <p id="file-ready-label" role="status">ファイルを用意しました</p>
@@ -555,9 +571,10 @@
     </div>
 
     <section id="pages-panel" class="bg-slate-900 border border-slate-700 rounded-2xl p-3 space-y-2">
-      <p id="pages-summary">連続スキャン</p>
+      <p id="pages-summary">保存画像</p>
       <p id="pages-status" role="status">連続スキャン：0ページ</p>
-      <p>最大20枚。閉じる前にPDF保存。</p>
+      <p>最大20枚。保存した画像はこの端末に残ります。</p>
+      <p id="page-storage-status" role="status" class="text-xs text-slate-400">保存画像を読み込み中…</p>
       <div id="pages-list"></div>
       <div class="grid grid-cols-2 gap-2">
       <button id="export-pages-btn" type="button" class="w-full bg-indigo-600 rounded-xl py-3">まとめてPDF</button>
@@ -735,10 +752,14 @@
     let sourceWidth = 0, sourceHeight = 0;
     let readyFile = null;
     let recognizedRevision = -1;
-    let appSettings={autoOCR:true,photoSave:false};
+    let appSettings={autoOCR:true,photoSave:false,shutterSound:true};
+    let ocrFailureRevision=-1;
+    let shutterAudio=null,shutterBuffer=null;
     let photoSaveFile=null,photoSaveURL=null;
     let automaticOCRTask=null;
     const scanPages = [];
+    let pageDatabase=null,pageStoreRevision=0,knownStoredPages=new Map();
+    let pageStorageReady=null,storageProtectionRequested=false;
     let activePageIndex = null;
     let currentPageDirty = true;
     let busy = false;
@@ -791,21 +812,52 @@
     const keyStoreName = 'goodscan_gemini_key_v1:' + new URL('.', location.href).pathname;
     try { apiKeyMemory = localStorage.getItem(keyStoreName) || ''; } catch (_) {}
     const settingsStoreName='goodscan_settings_v1:'+new URL('.',location.href).pathname;
-    try{const saved=JSON.parse(localStorage.getItem(settingsStoreName)||'null');if(saved){if(typeof saved.autoOCR==='boolean')appSettings.autoOCR=saved.autoOCR;if(typeof saved.photoSave==='boolean')appSettings.photoSave=saved.photoSave;}}catch(_){}
+    try{const saved=JSON.parse(localStorage.getItem(settingsStoreName)||'null');if(saved){if(typeof saved.autoOCR==='boolean')appSettings.autoOCR=saved.autoOCR;if(typeof saved.photoSave==='boolean')appSettings.photoSave=saved.photoSave;if(typeof saved.shutterSound==='boolean')appSettings.shutterSound=saved.shutterSound;}}catch(_){}
     document.getElementById('auto-ocr-setting').checked=appSettings.autoOCR;
     document.getElementById('photo-save-setting').checked=appSettings.photoSave;
+    document.getElementById('shutter-sound-setting').checked=appSettings.shutterSound;
+    function updateOCRButton(){
+      const retry=!!originalImage&&ocrFailureRevision===imageRevision;
+      execOcrBtn.hidden=appSettings.autoOCR&&(!retry||busy||!!videoStream);
+      execOcrBtn.disabled=busy||!!videoStream||!originalImage;
+      execOcrBtn.innerHTML='<i class="fa-solid fa-brain"></i><span>'+(appSettings.autoOCR?'再認識':'文字認識する')+'</span>';
+    }
+    function prepareShutterSound(){
+      if(!appSettings.shutterSound)return;
+      try{
+        const Audio=window.AudioContext||window.webkitAudioContext;
+        if(!Audio)return;
+        if(!shutterAudio||shutterAudio.state==='closed'){shutterAudio=new Audio();shutterBuffer=null;}
+        if(shutterAudio.state!=='running')shutterAudio.resume().catch(()=>{});
+        if(!shutterBuffer){
+          const rate=shutterAudio.sampleRate;shutterBuffer=shutterAudio.createBuffer(1,Math.ceil(rate*.14),rate);
+          const samples=shutterBuffer.getChannelData(0);
+          for(let i=0;i<samples.length;i++){
+            const t=i/rate,burst=t<.045?Math.exp(-t*85):t>.065?Math.exp(-(t-.065)*60)*.7:0;
+            samples[i]=(Math.random()*2-1)*burst*.35;
+          }
+        }
+      }catch(_){/* Audio failure must never prevent photography. */}
+    }
+    function playShutterSound(){
+      if(!appSettings.shutterSound||!shutterAudio||shutterAudio.state!=='running'||!shutterBuffer)return;
+      try{
+        const sound=shutterAudio.createBufferSource();sound.buffer=shutterBuffer;
+        sound.connect(shutterAudio.destination);sound.onended=()=>sound.disconnect();sound.start();
+      }catch(_){}
+    }
     function getApiKey() { return apiKeyMemory; }
     function invalidateOCR() {
       imageRevision++;
       currentPageDirty=true;
-      recognizedRevision=-1;
+      recognizedRevision=-1;ocrFailureRevision=-1;
       photoSaveFile=null;document.getElementById('photo-save-panel').hidden=true;
       if(photoSaveURL){URL.revokeObjectURL(photoSaveURL);photoSaveURL=null;}
       document.getElementById('photo-save-preview').removeAttribute('src');
       readyFile = null;document.getElementById('file-ready').hidden=true;
       ocrResults = []; ocrSourceText = ''; ocrState.value = '';
 
-      ocrStatus.textContent='';
+      ocrStatus.textContent='';updateOCRButton();
     }
     function setBusy(value) {
       busy = value;
@@ -815,7 +867,7 @@
         if (value) b.disabled = true;
         else if(b.dataset.oldDisabled!==undefined) { b.disabled = b.dataset.oldDisabled === 'yes'; delete b.dataset.oldDisabled; }
       });
-
+      updateOCRButton();
     }
     function requireKey() {
       if (getApiKey()) return true;
@@ -928,7 +980,7 @@
       modeAutoBtn.className = 'px-3 py-1 rounded-full bg-indigo-600 text-white font-semibold transition-all';
       modeManualBtn.className = 'px-3 py-1 rounded-full text-slate-300 font-medium transition-all';
       autoCaptureIndicator.classList.remove('hidden');
-      autoCaptureText.textContent = '書類を写して静止してください';
+      autoCaptureText.textContent = '書類の四隅を枠内に写してください';
       if (autoCaptureBarWrap) autoCaptureBarWrap.classList.add('hidden');
       showToast('自動撮影モードに切り替えました', 'fa-wand-magic-sparkles');
     });
@@ -946,9 +998,11 @@
       document.getElementById('scan-actions').hidden=active||!originalImage;
       const ids=['exec-ocr-btn','export-pdf-btn','export-img-btn','add-page-btn','delete-current-btn','open-crop-btn','rotate-doc-btn'];
       for(const id of ids){const button=document.getElementById(id);if(active){button.dataset.cameraDisabled=button.disabled?'yes':'no';button.disabled=true;}else if(button.dataset.cameraDisabled){button.disabled=button.dataset.cameraDisabled==='yes';delete button.dataset.cameraDisabled;}}
+      updateOCRButton();
     }
     async function startCamera() {
       if (busy || cameraStarting) return;
+      prepareShutterSound();
       cameraStarting=true;
       stopCamera();
       const token = cameraToken;
@@ -997,7 +1051,7 @@
 
         if (isAutoCaptureMode) {
           autoCaptureIndicator.classList.remove('hidden');
-          autoCaptureText.textContent = '書類を写して静止してください';
+          autoCaptureText.textContent = '書類の四隅を枠内に写してください';
           if (autoCaptureBarWrap) autoCaptureBarWrap.classList.add('hidden');
         }
 
@@ -1041,6 +1095,7 @@
       } else {
         emptyState.classList.remove('hidden');
       }
+      updateOCRButton();
     }
 
     // Local quadrilateral detection: threshold components plus connected edges.
@@ -1173,105 +1228,63 @@
     }
 
     function startCameraAnalysis() {
-      let lastCheck = 0;
-      const REQUIRED_STABLE_MS = 1000; // Shutter is independent of corner detection.
-      const STABILITY_THRESHOLD = 16.0;
-      const startedAt = performance.now();
-      let captureStarted = false;
-      let unstableSince = 0;
-
-      if (cameraAnimFrameId) {
-        cancelAnimationFrame(cameraAnimFrameId);
-        cameraAnimFrameId = null;
-      }
-
-      const overlayCtx = cameraOverlayCanvas.getContext('2d');
-      const tempCanvas = document.createElement('canvas');
-      const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
-      tempCanvas.width = 240;
-      tempCanvas.height = Math.max(120,Math.min(400,Math.round(240*(cameraVideo.videoHeight||4)/(cameraVideo.videoWidth||3))));
-
-      function checkLoop() {
-        if (captureStarted || !videoStream || cameraVideo.paused || cameraVideo.ended) return;
-
-        if (cameraVideo.videoWidth > 0 && cameraVideo.videoHeight > 0) {
-          const frameHeight=Math.max(120,Math.min(400,Math.round(240*cameraVideo.videoHeight/cameraVideo.videoWidth)));
-          if(tempCanvas.height!==frameHeight)tempCanvas.height=frameHeight;
-          cameraOverlayCanvas.width = cameraVideo.videoWidth;
-          cameraOverlayCanvas.height = cameraVideo.videoHeight;
-
-          overlayCtx.clearRect(0, 0, cameraOverlayCanvas.width, cameraOverlayCanvas.height);
-          const w = cameraOverlayCanvas.width, h = cameraOverlayCanvas.height;
-          overlayCtx.strokeStyle = lastDetectedCorners ? '#34d399' : 'rgba(99,102,241,.6)';
-          overlayCtx.lineWidth = Math.max(3,w/250);
-          if(lastDetectedCorners){
-            overlayCtx.beginPath();lastDetectedCorners.forEach((p,i)=>i?overlayCtx.lineTo(p.x*w,p.y*h):overlayCtx.moveTo(p.x*w,p.y*h));overlayCtx.closePath();overlayCtx.stroke();
-          }else{overlayCtx.setLineDash([15,10]);overlayCtx.strokeRect(w*.08,h*.08,w*.84,h*.84);overlayCtx.setLineDash([]);}
-
-          if (isAutoCaptureMode && performance.now() - lastCheck >= 200) {
-            const now=performance.now(),checkDelta=lastCheck?Math.min(400,now-lastCheck):200;
+      let lastCheck=0,captureStarted=false;
+      if(cameraAnimFrameId){cancelAnimationFrame(cameraAnimFrameId);cameraAnimFrameId=null;}
+      const overlayCtx=cameraOverlayCanvas.getContext('2d');
+      const tempCanvas=document.createElement('canvas'),tempCtx=tempCanvas.getContext('2d',{willReadFrequently:true});
+      tempCanvas.width=240;
+      function checkLoop(){
+        if(captureStarted||!videoStream||cameraVideo.paused||cameraVideo.ended)return;
+        if(cameraVideo.videoWidth>0&&cameraVideo.videoHeight>0){
+          const now=performance.now();
+          if(isAutoCaptureMode&&now-lastCheck>=200){
             lastCheck=now;
-            try {
-              tempCtx.drawImage(cameraVideo, 0, 0, tempCanvas.width, tempCanvas.height);
-              const curData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
-
-              let detected=null;
-              try{detected=detectDocument(curData,tempCanvas.width,tempCanvas.height);}catch(_){/* Detection must not disable the shutter. */}
-              const tracked=updateCornerTracking(detected,now);
-              if (prevFrameData) {
-                let diff=0,brightnessDelta=0;
-                for (let i = 0; i < curData.length; i += 4) {
-                  const delta=curData[i]-prevFrameData[i];diff+=Math.abs(delta);brightnessDelta+=delta;
-                }
-                const pixels=curData.length/4;
-                const avgDiff=Math.max(0,diff/pixels-.75*Math.abs(brightnessDelta/pixels));
-
-                if (now-startedAt>=700 && !tracked.jump && avgDiff < STABILITY_THRESHOLD) {
-                  unstableSince=0;
-                  if (!stableSince) stableSince=now;
-                  const elapsed=now-stableSince;
-                  const progress = Math.min(100, Math.round((elapsed / REQUIRED_STABLE_MS) * 100));
-
-                  if (autoCaptureBarWrap) {
-                    autoCaptureBarWrap.classList.remove('hidden');
-                    autoCaptureBar.style.width = progress + '%';
-                  }
-
-                  if (elapsed >= REQUIRED_STABLE_MS) {
-                    captureStarted=true;
-                    autoCaptureText.textContent = '自動撮影完了！';
-                    capturePhoto(detected);
-                    return;
-                  } else {
-                    autoCaptureText.textContent = 'そのまま持ってください…';
-                  }
-                } else {
-                  const briefShake=now-startedAt>=700&&!tracked.jump&&avgDiff<32&&stableSince>0;
-                  if(briefShake){
-                    if(!unstableSince)unstableSince=now;
-                    stableSince+=checkDelta; // Pause instead of counting a shaky frame as stable.
-                    if(now-unstableSince<=650){
-                      autoCaptureText.textContent='枠を保持しています。少し静止してください';
-                    }else{
-                      stableSince=0;unstableSince=0;autoCaptureBarWrap.classList.add('hidden');
-                      autoCaptureText.textContent='動きが続いています。静止してください';
-                    }
-                  }else{
-                    stableSince=0;unstableSince=0;autoCaptureBarWrap.classList.add('hidden');
-                    autoCaptureText.textContent='書類を写して静止してください';
-                  }
-                }
+            try{
+              tempCanvas.height=Math.max(120,Math.min(400,Math.round(240*cameraVideo.videoHeight/cameraVideo.videoWidth)));
+              tempCtx.drawImage(cameraVideo,0,0,tempCanvas.width,tempCanvas.height);
+              const data=tempCtx.getImageData(0,0,tempCanvas.width,tempCanvas.height).data;
+              const detected=detectDocument(data,tempCanvas.width,tempCanvas.height);
+              updateCornerTracking(detected,now);
+              // Only this frame's detection can trigger: retained corners never fire the shutter.
+              if(detected&&!busy){
+                captureStarted=true;autoCaptureText.textContent='書類を認識しました';
+                capturePhoto(detected);return;
               }
-              prevFrameData = curData;
-              previousDetectedCorners = detected;
-            } catch (cvErr) {
-              stableSince=0;autoCaptureText.textContent='映像を確認できません。手動撮影をお試しください';
-            }
+              autoCaptureText.textContent='書類の四隅を枠内に写してください';
+            }catch(_){autoCaptureText.textContent='四隅を認識できません。手動撮影も使えます';}
+          }
+          if(cameraOverlayCanvas.width!==cameraVideo.videoWidth)cameraOverlayCanvas.width=cameraVideo.videoWidth;
+          if(cameraOverlayCanvas.height!==cameraVideo.videoHeight)cameraOverlayCanvas.height=cameraVideo.videoHeight;
+          const w=cameraOverlayCanvas.width,h=cameraOverlayCanvas.height;
+          overlayCtx.clearRect(0,0,w,h);overlayCtx.lineWidth=Math.max(3,w/250);
+          if(lastDetectedCorners){
+            overlayCtx.strokeStyle='#34d399';overlayCtx.beginPath();
+            lastDetectedCorners.forEach((p,i)=>i?overlayCtx.lineTo(p.x*w,p.y*h):overlayCtx.moveTo(p.x*w,p.y*h));overlayCtx.closePath();overlayCtx.stroke();
+          }else{
+            overlayCtx.strokeStyle='rgba(99,102,241,.6)';overlayCtx.setLineDash([15,10]);overlayCtx.strokeRect(w*.08,h*.08,w*.84,h*.84);overlayCtx.setLineDash([]);
           }
         }
-        cameraAnimFrameId = requestAnimationFrame(checkLoop);
+        cameraAnimFrameId=requestAnimationFrame(checkLoop);
       }
-      cameraAnimFrameId = requestAnimationFrame(checkLoop);
+      cameraAnimFrameId=requestAnimationFrame(checkLoop);
+    }
+
+    // Recheck corners on a larger still image to reduce low-resolution crop errors.
+    function refineDocumentCorners(source,hint=null){
+      const c=document.createElement('canvas'),r=Math.min(1,640/Math.max(source.width,source.height));
+      c.width=Math.max(1,Math.round(source.width*r));c.height=Math.max(1,Math.round(source.height*r));
+      const context=c.getContext('2d',{willReadFrequently:true});context.drawImage(source,0,0,c.width,c.height);
+      const found=detectDocument(context.getImageData(0,0,c.width,c.height).data,c.width,c.height);
+      if(!hint)return found;
+      if(!found)return hint;
+      let aligned=null,error=Infinity;
+      for(let shift=0;shift<4;shift++){
+        const points=found.map((_,i)=>found[(i+shift)%4]);
+        const distance=Math.max(...points.map((p,i)=>Math.hypot(p.x-hint[i].x,p.y-hint[i].y)));
+        if(distance<error){error=distance;aligned=points;}
+      }
+      // A different rectangle must not replace the paper recognized in the camera.
+      return error<=.06?aligned:hint;
     }
 
     function capturePhoto(corners = null) {
@@ -1284,12 +1297,13 @@
       const tCtx = tempCanvas.getContext('2d');
       tCtx.drawImage(cameraVideo, 0, 0, tempCanvas.width, tempCanvas.height);
       const dataUrl = tempCanvas.toDataURL('image/png');
+      playShutterSound();
       const capturedCorners = isAutoCaptureMode && performance.now()-lastCornerSeenAt<=450 ? latestRawCorners : null;
       stopCamera();
       loadNewImage(dataUrl, corners || capturedCorners || 'detect');
     }
 
-    document.getElementById('take-photo-btn').addEventListener('click', capturePhoto);
+    document.getElementById('take-photo-btn').addEventListener('click',()=>{prepareShutterSound();capturePhoto();});
     document.getElementById('close-camera-btn').addEventListener('click', stopCamera);
     document.getElementById('flip-camera-btn').addEventListener('click', () => {
       cameraFacing = cameraFacing === 'environment' ? 'user' : 'environment';
@@ -1343,12 +1357,7 @@
         renderDocument();
         if(autoCorners){
           let corners=Array.isArray(autoCorners)?autoCorners:null;
-          if(!corners){
-            const c=document.createElement('canvas');const r=Math.min(1,400/Math.max(originalImage.width,originalImage.height));
-            c.width=Math.round(originalImage.width*r);c.height=Math.round(originalImage.height*r);
-            c.getContext('2d').drawImage(originalImage,0,0,c.width,c.height);
-            corners=detectDocument(c.getContext('2d').getImageData(0,0,c.width,c.height).data,c.width,c.height);
-          }
+          try{corners=refineDocumentCorners(originalImage,corners);}catch(_){/* Preserve the live corners if rechecking fails. */}
           if(corners){
             const points=corners.map(p=>({x:p.x*scanCanvas.width,y:p.y*scanCanvas.height}));
             const result=warpDocument(points);
@@ -1670,20 +1679,22 @@
         ocrStatus.textContent=!parsed.fullText.trim()?'文字未検出':invalid?'認識完了（文字位置は概略）':'認識完了：'+parsed.fullText.length+'文字';
         if (invalid) {ocrResults=[];ocrSourceText='';}
         showToast(parsed.fullText.trim()?'文字認識が完了しました':'認識できる文字がありません','fa-brain',!parsed.fullText.trim());
-      recognizedRevision=imageRevision;renderPages();
+      recognizedRevision=imageRevision;ocrFailureRevision=parsed.fullText.trim()?-1:imageRevision;renderPages();updateOCRButton();
     }
     async function ensureCurrentRecognition(){
       if(!appSettings.autoOCR||recognizedRevision===imageRevision)return;
       const rev=imageRevision;ocrStatus.textContent='文字認識中…';
-      const result=await recognizeCanvas(ocrSourceCanvas());
-      if(rev!==imageRevision)throw new Error('画像が変更されました');
-      commitRecognition(result);
+      try{
+        const result=await recognizeCanvas(ocrSourceCanvas());
+        if(rev!==imageRevision)throw new Error('画像が変更されました');
+        commitRecognition(result);
+      }catch(err){if(rev===imageRevision){ocrFailureRevision=rev;updateOCRButton();}throw err;}
     }
     // OCR never silently replaces a failure with generated example text.
     execOcrBtn.addEventListener('click', async () => {
       if (busy) return;
       if (!originalImage) {showToast('まず書類を取り込んでください','fa-info-circle',true);return;}
-      if (!requireKey()) return;
+      if (!requireKey()){ocrFailureRevision=imageRevision;updateOCRButton();return;}
       stopCamera(); const rev=imageRevision;setBusy(true);scanBeam.classList.remove('hidden');
       execOcrBtn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i><span>Gemini AIが文字を解析中...</span>';
       try {
@@ -1691,17 +1702,76 @@
         const parsed=await recognizeCanvas(ocrSourceCanvas());
         if(imageRevision!==rev)throw new Error('画像が変更されました');
         commitRecognition(parsed);
-      } catch(err) {ocrStatus.textContent='OCR失敗：'+err.message;showToast(err.message,'fa-circle-exclamation',true);}
-      finally {scanBeam.classList.add('hidden');setBusy(false);execOcrBtn.innerHTML='<i class="fa-solid fa-brain"></i><span>文字認識する</span>';}
+      } catch(err) {if(rev===imageRevision)ocrFailureRevision=rev;ocrStatus.textContent='OCR失敗：'+err.message;showToast(err.message,'fa-circle-exclamation',true);}
+      finally {scanBeam.classList.add('hidden');setBusy(false);updateOCRButton();}
     });
 
     const PDF_ENGINE_HTML = "<!doctype html><meta charset=\"utf-8\"><script src=\"https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js\"><\/script><script src=\"https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js\"><\/script><script>\nlet fontBytes;\nwindow.addEventListener('message',async e=>{\n if(e.source!==parent || !e.data.id)return;\n const j=e.data;\n try{\n  const doc=await PDFLib.PDFDocument.create();\n  const jobs=Array.isArray(j.pages)?j.pages:[j];\n  if(!jobs.length||jobs.length>20)throw new Error('ページ数が不正です');\n  for(const pageJob of jobs){\n  const j=pageJob;\n  const image=j.image.startsWith('data:image/png')?await doc.embedPng(j.image):await doc.embedJpg(j.image);\n  const scale=Math.min(595.28/j.width,841.89/j.height);\n  const W=j.width*scale,H=j.height*scale,page=doc.addPage([W,H]);\n  page.drawImage(image,{x:0,y:0,width:W,height:H});\n  if(j.text.trim()){\n   if(!window.fontkit)throw new Error('日本語PDFライブラリを読み込めません');\n   doc.registerFontkit(fontkit);\n   if(!fontBytes){\n    const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),45000);\n    try{const r=await fetch('https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@main/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf',{signal:ctrl.signal});if(!r.ok)throw new Error();fontBytes=await r.arrayBuffer();}\n    catch(_){throw new Error('日本語フォントを取得できません。通信を確認して再出力してください');}\n    finally{clearTimeout(timer);}\n   }\n   const font=await doc.embedFont(fontBytes,{subset:true});\n   // Exact edited text is embedded on a separate invisible text grid. No stale OCR blocks.\n   let entries=j.entries;\n   if(!entries.length){\n    const lines=j.text.split(/\\r?\\n/).filter(l=>l.trim());\n    entries=lines.map((text,i)=>({text,box_2d:[(i+.2)*1000/(lines.length+1),25,(i+.9)*1000/(lines.length+1),975]}));\n   }\n   // OCR fullText is authoritative. Blocks must cover it; otherwise use the exact fullText grid.\n   const compact=t=>t.replace(/\\s/g,'');\n   if(compact(entries.map(x=>x.text).join(''))!==compact(j.text)){\n    const lines=j.text.split(/\\r?\\n/).filter(l=>l.trim());\n    entries=lines.map((text,i)=>({text,box_2d:[(i+.2)*1000/(lines.length+1),25,(i+.9)*1000/(lines.length+1),975]}));\n   }\n   for(const entry of entries){\n    const [y0,x0,y1,x1]=entry.box_2d,text=entry.text.replace(/[\\u0000-\\u001f\\u007f]/g,' ');\n    if(!text.trim())continue;\n    const width=(x1-x0)/1000*W,height=(y1-y0)/1000*H;\n    const unit=font.widthOfTextAtSize(text,1);\n    const size=Math.max(.01,Math.min(height*.8,width/Math.max(unit,.01)));\n    page.drawText(text,{x:x0/1000*W,y:H-y1/1000*H,size,font,opacity:0});\n   }\n  }\n  }\n  const bytes=await doc.save();parent.postMessage({id:j.id,bytes},'*',[bytes.buffer]);\n }catch(err){parent.postMessage({id:j.id,error:err.message||'PDF生成に失敗しました'},'*');}\n});\nif(window.PDFLib)parent.postMessage({type:'pdf-ready'},'*');\n<\/script>";
+    function initializePageStorage(){
+      return new Promise(resolve=>{
+        if(!window.indexedDB){document.getElementById('page-storage-status').textContent='端末保存を利用できません。ファイル保存をご利用ください。';resolve(null);return;}
+        let settled=false;
+        const fail=message=>{if(settled)return;settled=true;document.getElementById('page-storage-status').textContent=message;resolve(null);};
+        const request=window.indexedDB.open('goodscan_pages_v1:'+new URL('.',location.href).pathname,1);
+        request.onupgradeneeded=()=>{const db=request.result;db.createObjectStore('pages',{keyPath:'id'});db.createObjectStore('meta');};
+        request.onblocked=()=>fail('保存領域を開けません。他のアプリ画面を閉じて開き直してください。');
+        request.onerror=()=>fail('保存画像を読み込めません。アプリを開き直してください。');
+        request.onsuccess=()=>{
+          const db=request.result;if(settled){db.close();return;}
+          const tx=db.transaction(['pages','meta'],'readonly');
+          const records=tx.objectStore('pages').getAll(),meta=tx.objectStore('meta').get('queue');
+          tx.onabort=()=>{db.close();fail('保存画像を読み込めません。アプリを開き直してください。');};
+          tx.oncomplete=()=>{
+            try{
+              const all=new Map(records.result.map(page=>[page.id,page]));
+              const order=meta.result?.ids||[];
+              if(!Array.isArray(order)||order.length>20||new Set(order).size!==order.length||(!meta.result&&all.size))throw new Error();
+              const pages=order.map(id=>all.get(id));
+              if(pages.some(p=>!p||typeof p.image!=='string'||!/^data:image\/(jpeg|png);base64,/.test(p.image)||typeof p.text!=='string'||!Array.isArray(p.entries)||!Number.isFinite(p.width)||!Number.isFinite(p.height)||p.width<1||p.height<1||p.width>8192||p.height>8192))throw new Error();
+              if(meta.result&&(!Number.isInteger(meta.result.version)||meta.result.version<0))throw new Error();
+              pageDatabase=db;pageStoreRevision=meta.result?.version||0;knownStoredPages=all;
+              db.onversionchange=()=>{db.close();pageDatabase=null;document.getElementById('page-storage-status').textContent='保存領域が変更されました。開き直してください。';};
+              scanPages.splice(0,scanPages.length,...pages);renderPages();
+              document.getElementById('page-storage-status').textContent=pages.length?'保存画像を読み込みました。':'保存すると、次回も一覧から開けます。';
+              settled=true;resolve(db);
+            }catch(_){db.close();fail('保存データを読み込めません。データは変更していません。');}
+          };
+        };
+      }).catch(()=>{document.getElementById('page-storage-status').textContent='端末保存を利用できません。ファイル保存をご利用ください。';return null;});
+    }
+    async function persistPageList(pages){
+      await pageStorageReady;
+      if(!pageDatabase)throw new Error('端末保存を利用できません。アプリを開き直すかファイル保存をご利用ください');
+      await new Promise((resolve,reject)=>{
+        const tx=pageDatabase.transaction(['pages','meta'],'readwrite'),store=tx.objectStore('pages'),meta=tx.objectStore('meta');
+        let conflict=false;
+        const check=meta.get('queue');
+        check.onsuccess=()=>{
+          if((check.result?.version||0)!==pageStoreRevision){conflict=true;tx.abort();return;}
+          const ids=new Set(pages.map(p=>p.id));
+          for(const id of knownStoredPages.keys())if(!ids.has(id))store.delete(id);
+          for(const page of pages)if(knownStoredPages.get(page.id)!==page)store.put(page);
+          meta.put({ids:pages.map(p=>p.id),version:pageStoreRevision+1},'queue');
+        };
+        tx.oncomplete=()=>{pageStoreRevision++;knownStoredPages=new Map(pages.map(p=>[p.id,p]));document.getElementById('page-storage-status').textContent='端末に保存済み';resolve();};
+        tx.onabort=()=>reject(new Error(conflict?'別の画面で保存画像が変更されました。開き直してください':tx.error?.name==='QuotaExceededError'?'保存容量が不足しています。画像をファイル保存してから不要な画像を削除してください':'端末保存に失敗しました。保存済みの画像は変更していません'));
+      });
+    }
+    async function deleteSavedPage(index){
+      if(busy||!confirm((index+1)+'ページ目を端末から削除しますか？'))return;
+      setBusy(true);
+      try{
+        const next=scanPages.filter((_,i)=>i!==index);await persistPageList(next);scanPages.splice(0,scanPages.length,...next);
+        if(activePageIndex===index){activePageIndex=null;currentPageDirty=!!originalImage;}else if(activePageIndex>index)activePageIndex--;
+        readyFile=null;document.getElementById('file-ready').hidden=true;renderPages();
+      }catch(err){showToast(err.message,'fa-circle-exclamation',true);}finally{setBusy(false);}
+    }
     function snapshotPage(){
-      renderDocument();return{image:scanCanvas.toDataURL('image/jpeg',.96),width:scanCanvas.width,height:scanCanvas.height,text:ocrState.value,recognized:recognizedRevision===imageRevision,entries:ocrSourceText===ocrState.value?JSON.parse(JSON.stringify(ocrResults)):[]};
+      renderDocument();return{id:activePageIndex!==null?scanPages[activePageIndex].id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2),image:scanCanvas.toDataURL('image/jpeg',.96),width:scanCanvas.width,height:scanCanvas.height,text:ocrState.value,recognized:recognizedRevision===imageRevision,entries:ocrSourceText===ocrState.value?JSON.parse(JSON.stringify(ocrResults)):[]};
     }
     function renderPages(){
       const list=document.getElementById('pages-list');list.replaceChildren();
-      document.getElementById('pages-summary').textContent='連続スキャン（'+scanPages.length+'枚）';
+      document.getElementById('pages-summary').textContent='保存画像（'+scanPages.length+'枚）';
       document.getElementById('pages-status').textContent='連続スキャン：'+scanPages.length+'ページ'+(activePageIndex!==null?' ／ '+(activePageIndex+1)+'ページ目を編集中':'');
       document.getElementById('add-page-btn').textContent=activePageIndex===null?'保存':currentPageDirty?'更新保存':'保存済み';
       scanPages.forEach((page,index)=>{
@@ -1711,24 +1781,30 @@
         const label=document.createElement('p');label.textContent=(index+1)+'ページ ／ '+(page.text.trim()?'文字あり':'文字なし');content.appendChild(label);
         const controls=document.createElement('div');controls.className='page-controls';
         function button(text,fn,disabled=false){const b=document.createElement('button');b.type='button';b.textContent=text;b.disabled=disabled;b.addEventListener('click',fn);controls.appendChild(b);}
-        button('編集',()=>{if(busy)return;if(originalImage&&currentPageDirty&&!confirm('現在の変更は未保存です。保存ページを開きますか？'))return;loadNewImage(page.image,null,null,()=>{
+        const openSavedPage=()=>{if(busy)return;if(originalImage&&currentPageDirty&&!confirm('現在の変更は未保存です。保存ページを開きますか？'))return;loadNewImage(page.image,null,null,()=>{
           currentFilter='original';currentRotation=0;
           document.querySelectorAll('.filter-pill').forEach(b=>{b.className='filter-pill ios-touch text-xs py-2 px-3.5 rounded-xl font-medium '+(b.dataset.filter==='original'?'active-pill bg-indigo-600 text-white':'bg-slate-800 text-slate-300 border border-slate-700/70');});
           ocrState.value=page.text;ocrSourceText=page.text;ocrResults=JSON.parse(JSON.stringify(page.entries));
-          recognizedRevision=page.recognized?imageRevision:-1;activePageIndex=index;currentPageDirty=false;renderDocument();renderPages();ocrStatus.textContent='保存ページを表示';
-        });});
+          recognizedRevision=page.recognized?imageRevision:-1;ocrFailureRevision=page.recognized&&!page.text.trim()?imageRevision:-1;activePageIndex=index;currentPageDirty=false;renderDocument();renderPages();updateOCRButton();ocrStatus.textContent='保存画像を表示';
+        });};
+        button('開く',openSavedPage);thumb.style.cursor='pointer';thumb.tabIndex=0;thumb.setAttribute('role','button');thumb.setAttribute('aria-label',(index+1)+'ページ目を開く');thumb.addEventListener('click',openSavedPage);thumb.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openSavedPage();}});
         button('↑',()=>movePage(index,-1),index===0);button('↓',()=>movePage(index,1),index===scanPages.length-1);
-        button('削除',()=>{if(!confirm((index+1)+'ページ目を削除しますか？'))return;scanPages.splice(index,1);if(activePageIndex===index)activePageIndex=null;else if(activePageIndex>index)activePageIndex--;readyFile=null;document.getElementById('file-ready').hidden=true;renderPages();});
+        button('削除',()=>deleteSavedPage(index));
         content.appendChild(controls);row.appendChild(content);list.appendChild(row);
       });
     }
-    function movePage(index,direction){
+    async function movePage(index,direction){
       if(busy)return;const target=index+direction;if(target<0||target>=scanPages.length)return;
-      [scanPages[index],scanPages[target]]=[scanPages[target],scanPages[index]];
-      if(activePageIndex===index)activePageIndex=target;else if(activePageIndex===target)activePageIndex=index;
-      readyFile=null;document.getElementById('file-ready').hidden=true;renderPages();
+      setBusy(true);
+      try{
+        const next=scanPages.slice();[next[index],next[target]]=[next[target],next[index]];await persistPageList(next);scanPages.splice(0,scanPages.length,...next);
+        if(activePageIndex===index)activePageIndex=target;else if(activePageIndex===target)activePageIndex=index;
+        readyFile=null;document.getElementById('file-ready').hidden=true;renderPages();
+      }catch(err){showToast(err.message,'fa-circle-exclamation',true);}finally{setBusy(false);}
     }
     document.getElementById('add-page-btn').addEventListener('click',async()=>{
+      if(!storageProtectionRequested&&navigator.storage?.persist){storageProtectionRequested=true;try{navigator.storage.persist().catch(()=>{});}catch(_){}}
+      await pageStorageReady;
       if(busy||!originalImage){showToast('書類を取り込んでください','fa-info-circle',true);return;}
       if(activePageIndex===null&&scanPages.length>=20){showToast('一度に20ページまでです。PDFを保存してください','fa-info-circle',true);return;}
       if(appSettings.autoOCR&&recognizedRevision!==imageRevision&&!requireKey())return;
@@ -1736,7 +1812,8 @@
       try{
         await ensureCurrentRecognition();
         if(appSettings.autoOCR&&!ocrState.value.trim()&&!confirm('文字未検出。画像のみで追加しますか？'))return;
-        const page=snapshotPage();if(activePageIndex===null){scanPages.push(page);activePageIndex=scanPages.length-1;}else scanPages[activePageIndex]=page;
+        const page=snapshotPage(),next=scanPages.slice(),savedIndex=activePageIndex===null?next.length:activePageIndex;next[savedIndex]=page;
+        await persistPageList(next);scanPages.splice(0,scanPages.length,...next);activePageIndex=savedIndex;
         currentPageDirty=false;readyFile=null;document.getElementById('file-ready').hidden=true;renderPages();showToast('ページを保存しました','fa-check');
       }catch(err){ocrStatus.textContent='ページ追加失敗：'+err.message;showToast(err.message,'fa-circle-exclamation',true);}
       finally{setBusy(false);}
@@ -1745,20 +1822,26 @@
       if(busy)return;if(originalImage&&currentPageDirty&&!confirm('現在の画像の変更はページに未保存です。次を撮影しますか？'))return;
       startCamera();
     });
-    document.getElementById('delete-current-btn').addEventListener('click',()=>{
+    document.getElementById('delete-current-btn').addEventListener('click',async()=>{
       if(busy||!originalImage||!confirm('この画像を削除しますか？'))return;
-      stopCamera();imageLoadToken++;
-      if(activePageIndex!==null)scanPages.splice(activePageIndex,1);
-      activePageIndex=null;originalImage=null;currentRotation=0;sourceWidth=0;sourceHeight=0;
-      invalidateOCR();scanCanvas.width=1;scanCanvas.height=1;scanCanvas.classList.add('hidden');emptyState.classList.remove('hidden');
-      document.getElementById('scan-actions').hidden=true;
-      document.getElementById('quality-status').textContent='';document.getElementById('image-info').textContent='';
-      openCropBtn.disabled=true;rotateDocBtn.disabled=true;exportPdfBtn.disabled=true;exportImgBtn.disabled=true;
-      renderPages();showToast('画像を削除しました','fa-trash');
+      stopCamera();setBusy(true);
+      try{
+        if(activePageIndex!==null){const next=scanPages.filter((_,i)=>i!==activePageIndex);await persistPageList(next);scanPages.splice(0,scanPages.length,...next);}
+        imageLoadToken++;activePageIndex=null;originalImage=null;currentRotation=0;sourceWidth=0;sourceHeight=0;
+        invalidateOCR();scanCanvas.width=1;scanCanvas.height=1;scanCanvas.classList.add('hidden');emptyState.classList.remove('hidden');
+        document.getElementById('scan-actions').hidden=true;
+        document.getElementById('quality-status').textContent='';document.getElementById('image-info').textContent='';
+        // Update setBusy's restore state as this image no longer exists.
+        [openCropBtn,rotateDocBtn,exportPdfBtn,exportImgBtn].forEach(b=>{b.disabled=true;b.dataset.oldDisabled='yes';});
+        renderPages();showToast('画像を削除しました','fa-trash');
+      }catch(err){showToast(err.message,'fa-circle-exclamation',true);}finally{setBusy(false);}
     });
-    document.getElementById('clear-pages-btn').addEventListener('click',()=>{
-      if(busy||!scanPages.length||!confirm('保存ページをすべて削除しますか？'))return;
-      scanPages.length=0;activePageIndex=null;renderPages();readyFile=null;document.getElementById('file-ready').hidden=true;
+    document.getElementById('clear-pages-btn').addEventListener('click',async()=>{
+      if(busy||!scanPages.length||!confirm('保存画像を端末からすべて削除しますか？'))return;
+      setBusy(true);
+      try{
+        await persistPageList([]);scanPages.length=0;activePageIndex=null;currentPageDirty=!!originalImage;renderPages();readyFile=null;document.getElementById('file-ready').hidden=true;
+      }catch(err){showToast(err.message,'fa-circle-exclamation',true);}finally{setBusy(false);}
     });
     document.getElementById('export-pages-btn').addEventListener('click',async()=>{
       if(busy||!scanPages.length){showToast('まずページを追加してください','fa-info-circle',true);return;}
@@ -1767,7 +1850,7 @@
       try{const bytes=await buildPdf({pages:scanPages});presentFile(new Blob([bytes],{type:'application/pdf'}),'GoodScan_'+scanPages.length+'pages_'+Date.now()+'.pdf');showToast('複数ページPDFを用意しました','fa-file-pdf');}
       catch(err){showToast(err.message,'fa-circle-exclamation',true);}finally{setBusy(false);}
     });
-    window.addEventListener('beforeunload',event=>{if(scanPages.length){event.preventDefault();event.returnValue='';}});
+    window.addEventListener('beforeunload',event=>{if(busy||(originalImage&&currentPageDirty)){event.preventDefault();event.returnValue='';}});
     // Isolated PDF engine: allow-scripts only, deliberately no allow-same-origin.
     function getPdfEngine() {
       if (pdfReady) return pdfReady;
@@ -1840,7 +1923,7 @@
     });
     async function startAutomaticOCR(){
       if(!appSettings.autoOCR||recognizedRevision===imageRevision||busy)return;
-      if(!getApiKey()){ocrStatus.textContent='APIキー未設定';return;}
+      if(!getApiKey()){ocrStatus.textContent='APIキー未設定';ocrFailureRevision=imageRevision;updateOCRButton();return;}
       stopCamera();setBusy(true);scanBeam.classList.remove('hidden');
       try{await ensureCurrentRecognition();}catch(err){ocrStatus.textContent='OCR失敗：'+err.message;showToast(err.message,'fa-circle-exclamation',true);}
       finally{scanBeam.classList.add('hidden');setBusy(false);automaticOCRTask=null;}
@@ -1911,6 +1994,8 @@
     window.addEventListener('resize',()=>{if(!viewer.hidden){resetViewer();rebaseViewerGesture();}});
     window.addEventListener('pagehide',closeViewer);
 
+    document.addEventListener('visibilitychange',()=>{if(document.hidden&&shutterAudio?.state==='running')shutterAudio.suspend().catch(()=>{});});
+
     // Settings Modal
     const settingsModal = document.getElementById('settings-modal');
     const apiKeyInput = document.getElementById('api-key-input');
@@ -1918,12 +2003,14 @@
       apiKeyInput.value = getApiKey();
       document.getElementById('auto-ocr-setting').checked=appSettings.autoOCR;
       document.getElementById('photo-save-setting').checked=appSettings.photoSave;
+    document.getElementById('shutter-sound-setting').checked=appSettings.shutterSound;
       settingsModal.classList.remove('hidden');
     });
     document.getElementById('close-settings-btn').addEventListener('click', () => {apiKeyInput.value='';settingsModal.classList.add('hidden');});
     document.getElementById('save-settings-btn').addEventListener('click', () => {
       const key = apiKeyInput.value.trim();
-      const preferences={autoOCR:document.getElementById('auto-ocr-setting').checked,photoSave:document.getElementById('photo-save-setting').checked};
+      const wasAuto=appSettings.autoOCR;
+      const preferences={autoOCR:document.getElementById('auto-ocr-setting').checked,photoSave:document.getElementById('photo-save-setting').checked,shutterSound:document.getElementById('shutter-sound-setting').checked};
       appSettings=preferences;
       try {
         if (key) localStorage.setItem(keyStoreName, key);
@@ -1938,6 +2025,8 @@
         apiKeyMemory = key;
         showToast('端末保存できません。この画面内だけに適用します', 'fa-triangle-exclamation', true);
       }
+      updateOCRButton();prepareShutterSound();
+      if(!wasAuto&&preferences.autoOCR&&originalImage&&recognizedRevision!==imageRevision&&!busy)automaticOCRTask=startAutomaticOCR();
     });
     document.getElementById('clear-api-key-btn').addEventListener('click', () => {
       apiKeyMemory = '';
@@ -1965,7 +2054,8 @@
 
     // Initial state: Auto mode
     autoCaptureIndicator.classList.add('hidden');
-    exportPdfBtn.disabled=true;exportImgBtn.disabled=true;
+    exportPdfBtn.disabled=true;exportImgBtn.disabled=true;updateOCRButton();
+    pageStorageReady=initializePageStorage();
 
     })();
   </script>
