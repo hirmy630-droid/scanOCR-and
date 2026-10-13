@@ -382,6 +382,7 @@
     #scan-tool-group button:active{box-shadow:inset 0 2px 4px rgba(0,0,0,.35)}
     #scan-actions button{box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -2px 0 rgba(0,0,0,.22)}
     #scan-actions button:active{box-shadow:inset 0 2px 4px rgba(0,0,0,.35)}
+    #camera-preview #camera-stream,#camera-preview #camera-overlay-canvas,#camera-preview #scan-canvas{position:absolute;inset:0;width:100%;height:100%;min-width:0;min-height:0;max-width:none;max-height:none;object-fit:contain;object-position:center;flex:none}
   </style>
 </head>
 <body class="min-h-[100dvh] flex flex-col justify-between overflow-x-hidden">
@@ -435,7 +436,7 @@
   <main class="flex-1 w-full max-w-md mx-auto px-3.5 py-3 flex flex-col space-y-3.5">
     
     <!-- Camera / Document Display Card -->
-    <div class="relative w-full aspect-[3/4] bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 shadow-2xl flex items-center justify-center">
+    <div id="camera-preview" class="relative w-full aspect-[3/4] bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 shadow-2xl flex items-center justify-center">
       
       <!-- Empty Placeholder -->
       <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10">
@@ -1044,6 +1045,7 @@
 
         setCameraUI(true);
         scanCanvas.parentElement.classList.add('camera-live');
+        scanCanvas.classList.add('hidden');scanCanvas.hidden=true;emptyState.classList.add('hidden');
         cameraVideo.classList.remove('hidden');
         await cameraVideo.play();
         if (token !== cameraToken) return;
@@ -1095,7 +1097,7 @@
       autoCaptureIndicator.classList.add('hidden');
 
       if (originalImage) {
-        scanCanvas.classList.remove('hidden');
+        scanCanvas.hidden=false;scanCanvas.classList.remove('hidden');
       } else {
         emptyState.classList.remove('hidden');
       }
@@ -1320,12 +1322,12 @@
                 if(detail.hasInk&&detail.sharpness<45){reset();message='ピントを確認中…';}
                 else if(motion<14&&shift<.028&&drift<.09){
                   if(!anchor){anchor=detected.map(p=>({...p}));stableMs=0;}else stableMs+=elapsed;pauseMs=0;
-                  message='書類を確認中…';ready=stableMs>=600;
+                  message='書類を確認中…';ready=stableMs>=450;
                 }else if(motion<24&&shift<.055&&drift<.12&&anchor&&pauseMs<900){pauseMs+=elapsed;message='動きが落ち着くのを待っています';}
                 else{reset();message='動きが落ち着くのを待っています';}
               }
               autoCaptureText.textContent=message;
-              if(autoCaptureBarWrap){autoCaptureBarWrap.classList.toggle('hidden',!anchor);autoCaptureBar.style.width=(anchor?Math.max(5,Math.min(100,Math.round(stableMs/600*100))):0)+'%';}
+              if(autoCaptureBarWrap){autoCaptureBarWrap.classList.toggle('hidden',!anchor);autoCaptureBar.style.width=(anchor?Math.max(5,Math.min(100,Math.round(stableMs/450*100))):0)+'%';}
               if(ready&&!busy){
                 // Recheck the actual full-resolution frame, not old preview corners.
                 if(capturePhoto(detected,true)){captureStarted=true;return;}
@@ -1447,7 +1449,7 @@
         if(!onReady)selectFilter('clean');
         invalidateOCR();
         emptyState.classList.add('hidden');
-        scanCanvas.classList.remove('hidden');
+        scanCanvas.hidden=false;scanCanvas.classList.remove('hidden');
         openCropBtn.disabled = false;
         rotateDocBtn.disabled = false;
         exportPdfBtn.disabled=false;exportImgBtn.disabled=false;
@@ -1963,7 +1965,7 @@
       try{
         if(activePageIndex!==null){const next=scanPages.filter((_,i)=>i!==activePageIndex);await persistPageList(next);scanPages.splice(0,scanPages.length,...next);}
         imageLoadToken++;activePageIndex=null;originalImage=null;uncroppedImage=null;document.getElementById('restore-scan-btn').hidden=true;currentRotation=0;sourceWidth=0;sourceHeight=0;
-        invalidateOCR();scanCanvas.width=1;scanCanvas.height=1;scanCanvas.classList.add('hidden');emptyState.classList.remove('hidden');
+        invalidateOCR();scanCanvas.width=1;scanCanvas.height=1;scanCanvas.hidden=true;scanCanvas.classList.add('hidden');emptyState.classList.remove('hidden');
         document.getElementById('scan-actions').hidden=true;
         document.getElementById('quality-status').textContent='';document.getElementById('image-info').textContent='';
         // Update setBusy's restore state as this image no longer exists.
