@@ -4,9 +4,9 @@
   "description": "iPhone用 書類スキャン & GoodNotes文字認識ツール",
   "start_url": "./index.html",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#020617",
-  "theme_color": "#020617",
+  "orientation": "any",
+  "background_color": "#edf1f5",
+  "theme_color": "#14283e",
   "icons": [
     {
       "src": "./icon-192.png",
