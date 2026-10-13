@@ -403,6 +403,22 @@
     .page-row,.page-controls button,#viewer-toolbar button{background-color:#0c1b2c;border-color:#2b435d}
     #image-fullscreen{background:#020407}
     .setting-row input{accent-color:#527fab}
+    /* Camera-only full viewport; contain keeps the complete sensor frame visible. */
+    body.camera-active{overflow:hidden;overscroll-behavior:none}
+    body.camera-active>header,body.camera-active>div.sticky.bottom-0{visibility:hidden}
+    body.camera-active main>:not(#camera-preview){visibility:hidden}
+    #camera-preview.camera-live{position:fixed;inset:0;width:100%;height:100vh;height:100dvh;max-width:none;max-height:none;margin:0 !important;border:0;border-radius:0;background:#030508;z-index:60;touch-action:none}
+    #camera-preview.camera-live #camera-stream,#camera-preview.camera-live #camera-overlay-canvas{inset:auto !important;left:0 !important;top:calc(env(safe-area-inset-top,0px) + 64px) !important;width:100% !important;height:calc(100% - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 196px) !important;object-fit:contain !important}
+    #camera-preview.camera-live #auto-capture-indicator{top:calc(env(safe-area-inset-top,0px) + 8px);max-width:360px}
+    #camera-preview.camera-live #camera-controls{bottom:calc(env(safe-area-inset-bottom,0px) + 10px);gap:8px;padding:0 16px}
+    #camera-preview.camera-live #close-camera-btn,#camera-preview.camera-live #flip-camera-btn{min-width:44px;min-height:44px}
+    #camera-preview.camera-live #take-photo-btn{min-width:64px;min-height:64px}
+    @media(orientation:landscape) and (max-height:500px){
+      #camera-preview.camera-live #camera-stream,#camera-preview.camera-live #camera-overlay-canvas{top:0 !important;width:calc(100% - 132px - env(safe-area-inset-right,0px)) !important;height:100% !important}
+      #camera-preview.camera-live #camera-controls{left:auto;right:calc(env(safe-area-inset-right,0px) + 8px);top:0;bottom:0;width:116px;padding:8px 0;justify-content:center}
+      #camera-preview.camera-live #camera-controls>div:first-child,#camera-preview.camera-live #camera-controls>div:last-child{flex-direction:column;gap:8px}
+      #camera-preview.camera-live #auto-capture-indicator{left:8px;transform:none;width:calc(100% - 156px - env(safe-area-inset-right,0px));max-width:330px}
+    }
   </style>
 </head>
 <body class="min-h-[100dvh] flex flex-col justify-between overflow-x-hidden">
@@ -441,6 +457,7 @@
         OCR画像をGoogleへ送信します。利用枠により有料。キーは端末保存。
       </p>
       <label class="setting-row"><span>PDF作成時に自動文字認識</span><input id="auto-ocr-setting" type="checkbox"></label>
+      <label class="setting-row"><span>手動撮影タイマー</span><select id="manual-delay-setting" style="font-size:16px;background:#102033;color:#eaf1f8;padding:6px;border-radius:6px"><option value="0">なし</option><option value="1">1秒</option><option value="2">2秒</option><option value="3">3秒</option></select></label>
       <label class="setting-row"><span>シャッター音</span><input id="shutter-sound-setting" type="checkbox"></label>
       <label class="setting-row"><span>撮影後に写真保存ボタンを表示</span><input id="photo-save-setting" type="checkbox"></label>
       <p class="text-xs text-slate-400">写真への保存は最後に操作が必要です。</p>
@@ -492,6 +509,10 @@
       <!-- Laser Beam for OCR -->
       <div id="scan-beam" class="hidden absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_#22d3ee] scanner-beam z-20 pointer-events-none"></div>
 
+      <div id="manual-timer-overlay" hidden style="position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;pointer-events:none">
+        <span id="manual-timer-count" role="status" aria-live="polite" style="font-size:32px;font-weight:700;padding:12px 22px;border-radius:12px;background:rgba(3,5,8,.85);color:#eaf1f8">1</span>
+        <button id="manual-timer-cancel-btn" type="button" style="pointer-events:auto;font-size:14px;padding:6px 16px;background:#193e66;color:#fff;border:1px solid #507da5;border-radius:8px">キャンセル</button>
+      </div>
       <!-- Live Camera Controls Overlay -->
       <div id="camera-controls" class="hidden absolute bottom-4 inset-x-0 flex flex-col items-center gap-3 z-30 px-5">
         
@@ -507,15 +528,15 @@
 
         <!-- Shutter Buttons -->
         <div class="w-full flex items-center justify-around">
-          <button id="close-camera-btn" type="button" class="ios-touch w-11 h-11 rounded-full bg-black/60 text-white flex items-center justify-center border border-white/20">
+          <button id="close-camera-btn" type="button" aria-label="撮影を閉じる" class="ios-touch w-11 h-11 rounded-full bg-black/60 text-white flex items-center justify-center border border-white/20">
             <i class="fa-solid fa-xmark text-base"></i>
           </button>
-          <button id="take-photo-btn" type="button" class="ios-touch w-16 h-16 rounded-full bg-white p-1.5 shadow-2xl flex items-center justify-center border-4 border-indigo-500">
+          <button id="take-photo-btn" type="button" aria-label="シャッター" class="ios-touch w-16 h-16 rounded-full bg-white p-1.5 shadow-2xl flex items-center justify-center border-4 border-indigo-500">
             <div class="w-12 h-12 rounded-full bg-indigo-600 flex items-center justify-center text-white">
               <i class="fa-solid fa-camera text-base"></i>
             </div>
           </button>
-          <button id="flip-camera-btn" type="button" class="ios-touch w-11 h-11 rounded-full bg-black/60 text-white flex items-center justify-center border border-white/20">
+          <button id="flip-camera-btn" type="button" aria-label="カメラを切り替える" class="ios-touch w-11 h-11 rounded-full bg-black/60 text-white flex items-center justify-center border border-white/20">
             <i class="fa-solid fa-arrows-rotate text-sm"></i>
           </button>
         </div>
@@ -776,12 +797,13 @@
     let sourceWidth = 0, sourceHeight = 0;
     let readyFile = null;
     let recognizedRevision = -1;
-    let appSettings={autoOCR:true,photoSave:false,shutterSound:true};
+    let appSettings={autoOCR:true,photoSave:false,shutterSound:true,manualDelay:1};
     let ocrFailureRevision=-1,automaticOCRBlockedRevision=-1;
     let ocrInProgress=false,ocrCancelRequested=false;
     let shutterAudio=null,shutterBuffer=null;
     let photoSaveFile=null,photoSaveURL=null;
     let uncroppedImage=null;
+    let manualCountdown=false,manualTimerId=null;
     let automaticOCRTask=null;
     const scanPages = [];
     let pageDatabase=null,pageStoreRevision=0,knownStoredPages=new Map();
@@ -838,10 +860,11 @@
     const keyStoreName = 'goodscan_gemini_key_v1:' + new URL('.', location.href).pathname;
     try { apiKeyMemory = localStorage.getItem(keyStoreName) || ''; } catch (_) {}
     const settingsStoreName='goodscan_settings_v1:'+new URL('.',location.href).pathname;
-    try{const saved=JSON.parse(localStorage.getItem(settingsStoreName)||'null');if(saved){if(typeof saved.autoOCR==='boolean')appSettings.autoOCR=saved.autoOCR;if(typeof saved.photoSave==='boolean')appSettings.photoSave=saved.photoSave;if(typeof saved.shutterSound==='boolean')appSettings.shutterSound=saved.shutterSound;}}catch(_){}
+    try{const saved=JSON.parse(localStorage.getItem(settingsStoreName)||'null');if(saved){if(typeof saved.autoOCR==='boolean')appSettings.autoOCR=saved.autoOCR;if(typeof saved.photoSave==='boolean')appSettings.photoSave=saved.photoSave;if(typeof saved.shutterSound==='boolean')appSettings.shutterSound=saved.shutterSound;if([0,1,2,3].includes(saved.manualDelay))appSettings.manualDelay=saved.manualDelay;}}catch(_){}
     document.getElementById('auto-ocr-setting').checked=appSettings.autoOCR;
     document.getElementById('photo-save-setting').checked=appSettings.photoSave;
     document.getElementById('shutter-sound-setting').checked=appSettings.shutterSound;
+    document.getElementById('manual-delay-setting').value=String(appSettings.manualDelay);
     function updateOCRButton(){
       const retry=!!originalImage&&ocrFailureRevision===imageRevision;
       execOcrBtn.hidden=appSettings.autoOCR&&(!retry||busy||!!videoStream);
@@ -856,11 +879,15 @@
         if(!shutterAudio||shutterAudio.state==='closed'){shutterAudio=new Audio();shutterBuffer=null;}
         if(shutterAudio.state!=='running')shutterAudio.resume().catch(()=>{});
         if(!shutterBuffer){
-          const rate=shutterAudio.sampleRate;shutterBuffer=shutterAudio.createBuffer(1,Math.ceil(rate*.14),rate);
+          const rate=shutterAudio.sampleRate;shutterBuffer=shutterAudio.createBuffer(1,Math.ceil(rate*.18),rate);
           const samples=shutterBuffer.getChannelData(0);
+          let lastNoise=0;
           for(let i=0;i<samples.length;i++){
-            const t=i/rate,burst=t<.045?Math.exp(-t*85):t>.065?Math.exp(-(t-.065)*60)*.7:0;
-            samples[i]=(Math.random()*2-1)*burst*.35;
+            const t=i/rate,noise=Math.random()*2-1,crisp=(noise-lastNoise)*.5;lastNoise=noise;
+            const open=Math.exp(-t*145),u=t-.062,close=u>=0?Math.exp(-u*100):0;
+            const scrape=t>=.016&&t<.060?Math.sin(Math.PI*(t-.016)/.044)*.07:0;
+            const click=Math.sin(2*Math.PI*1650*t)*open*.12+(u>=0?Math.sin(2*Math.PI*1050*u)*close*.14:0);
+            samples[i]=crisp*(open*.38+close*.30+scrape)+click;
           }
         }
       }catch(_){/* Audio failure must never prevent photography. */}
@@ -1021,6 +1048,7 @@
     });
 
     function setCameraUI(active){
+      document.body.classList.toggle('camera-active',active);
       document.getElementById('scan-actions').hidden=active||!originalImage;
       const ids=['exec-ocr-btn','export-pdf-btn','export-img-btn','add-page-btn','delete-current-btn','restore-scan-btn','open-crop-btn','rotate-doc-btn'];
       for(const id of ids){const button=document.getElementById(id);if(active){button.dataset.cameraDisabled=button.disabled?'yes':'no';button.disabled=true;}else if(button.dataset.cameraDisabled){button.disabled=button.dataset.cameraDisabled==='yes';delete button.dataset.cameraDisabled;}}
@@ -1107,6 +1135,7 @@
     }
 
     function stopCamera() {
+      cancelManualTimer(false);
       setCameraUI(false);
       scanCanvas.parentElement.classList.remove('camera-live');
       cameraToken++;
@@ -1330,7 +1359,7 @@
       tempCanvas.width=320;
       function reset(){stableMs=0;pauseMs=0;anchor=null;}
       function checkLoop(){
-        if(captureStarted||!videoStream||cameraVideo.paused||cameraVideo.ended)return;
+        if(captureStarted||manualCountdown||!videoStream||cameraVideo.paused||cameraVideo.ended)return;
         if(!isAutoCaptureMode){reset();previous=null;previousCorners=null;lastCheck=0;}
         if(cameraVideo.videoWidth>0&&cameraVideo.videoHeight>0){
           const now=performance.now();if(firstFrameAt===null)firstFrameAt=now;
@@ -1431,7 +1460,40 @@
       return true;
     }
 
-    document.getElementById('take-photo-btn').addEventListener('click',()=>{prepareShutterSound();capturePhoto();});
+    function cancelManualTimer(restart=false){
+      const wasWaiting=manualCountdown;manualCountdown=false;
+      if(manualTimerId!==null){clearTimeout(manualTimerId);manualTimerId=null;}
+      document.getElementById('manual-timer-overlay').hidden=true;
+      document.querySelectorAll('button').forEach(button=>{
+        if(button.dataset.manualDisabled!==undefined){button.disabled=button.dataset.manualDisabled==='yes';delete button.dataset.manualDisabled;}
+      });
+      if(wasWaiting&&restart&&videoStream&&!document.hidden)startCameraAnalysis();
+    }
+    function beginManualCapture(){
+      if(busy||manualCountdown||!videoStream||!cameraVideo.videoWidth)return;
+      prepareShutterSound();
+      const seconds=appSettings.manualDelay;
+      if(!seconds){capturePhoto();return;}
+      manualCountdown=true;
+      if(cameraAnimFrameId){cancelAnimationFrame(cameraAnimFrameId);cameraAnimFrameId=null;}
+      const token=cameraToken,deadline=performance.now()+seconds*1000;
+      document.querySelectorAll('button').forEach(button=>{
+        if(['manual-timer-cancel-btn','close-camera-btn'].includes(button.id))return;
+        button.dataset.manualDisabled=button.disabled?'yes':'no';button.disabled=true;
+      });
+      document.getElementById('manual-timer-overlay').hidden=false;
+      function tick(){
+        if(!manualCountdown)return;
+        if(token!==cameraToken||!videoStream||document.hidden){cancelManualTimer(false);return;}
+        const remaining=deadline-performance.now();
+        if(remaining<=0){cancelManualTimer(false);capturePhoto();return;}
+        document.getElementById('manual-timer-count').textContent=Math.ceil(remaining/1000)+'秒';
+        manualTimerId=setTimeout(tick,Math.min(100,remaining));
+      }
+      tick();
+    }
+    document.getElementById('take-photo-btn').addEventListener('click',beginManualCapture);
+    document.getElementById('manual-timer-cancel-btn').addEventListener('click',()=>cancelManualTimer(true));
     document.getElementById('close-camera-btn').addEventListener('click', stopCamera);
     document.getElementById('flip-camera-btn').addEventListener('click', () => {
       cameraFacing = cameraFacing === 'environment' ? 'user' : 'environment';
@@ -2243,13 +2305,14 @@
       document.getElementById('auto-ocr-setting').checked=appSettings.autoOCR;
       document.getElementById('photo-save-setting').checked=appSettings.photoSave;
     document.getElementById('shutter-sound-setting').checked=appSettings.shutterSound;
+    document.getElementById('manual-delay-setting').value=String(appSettings.manualDelay);
       settingsModal.classList.remove('hidden');
     });
     document.getElementById('close-settings-btn').addEventListener('click', () => {apiKeyInput.value='';settingsModal.classList.add('hidden');});
     document.getElementById('save-settings-btn').addEventListener('click', () => {
       const key = apiKeyInput.value.trim();
       const wasAuto=appSettings.autoOCR;
-      const preferences={autoOCR:document.getElementById('auto-ocr-setting').checked,photoSave:document.getElementById('photo-save-setting').checked,shutterSound:document.getElementById('shutter-sound-setting').checked};
+      const preferences={autoOCR:document.getElementById('auto-ocr-setting').checked,photoSave:document.getElementById('photo-save-setting').checked,shutterSound:document.getElementById('shutter-sound-setting').checked,manualDelay:[0,1,2,3].includes(Number(document.getElementById('manual-delay-setting').value))?Number(document.getElementById('manual-delay-setting').value):1};
       appSettings=preferences;
       try {
         if (key) localStorage.setItem(keyStoreName, key);
