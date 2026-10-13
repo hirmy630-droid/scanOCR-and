@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#020617">
-  <title>GoodScan AI - iPhone用 書類スキャン & GoodNotes文字認識</title>
+  <title>GoodScan AI - 高精度手書き・活字AI認識 & GoodNotes PDF</title>
 
   <!-- PWA Manifest & Icons -->
   <link rel="manifest" href="manifest.json">
@@ -16,21 +16,23 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <!-- PDF-Lib & FontKit for generating Searchable Japanese PDF with invisible text -->
+  <!-- PDF-Lib for generating Searchable PDF with invisible text for GoodNotes -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
 
+  <!-- Fallback local OCR (Tesseract) & Fontkit -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/tesseract.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
   <style>
+    [hidden], .hidden { display: none !important; }
+    textarea, input { user-select: text; -webkit-user-select: text; font-size: 16px !important; }
+    #crop-canvas { touch-action: none; }
+
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
 
     :root {
       --sat: env(safe-area-inset-top, 44px);
       --sab: env(safe-area-inset-bottom, 34px);
     }
-
-    [hidden], .hidden { display: none !important; }
-    textarea, input { user-select: text; -webkit-user-select: text; font-size: 16px !important; }
-    #crop-canvas { touch-action: none; }
 
     html, body {
       min-height: 100dvh;
@@ -99,7 +101,7 @@
         <i class="fa-solid fa-wand-magic-sparkles text-[10px]"></i>
         <span>サンプル</span>
       </button>
-      <button id="api-key-btn" class="ios-touch w-8 h-8 rounded-full bg-slate-800/90 active:bg-slate-700 text-slate-300 flex items-center justify-center text-xs" title="API設定">
+      <button id="settings-btn" class="ios-touch w-8 h-8 rounded-full bg-slate-800/90 active:bg-slate-700 text-slate-300 flex items-center justify-center text-xs">
         <i class="fa-solid fa-gear"></i>
       </button>
       <button id="guide-modal-btn" class="ios-touch w-8 h-8 rounded-full bg-slate-800/90 active:bg-slate-700 text-slate-300 flex items-center justify-center text-xs">
@@ -107,6 +109,28 @@
       </button>
     </div>
   </header>
+
+  <!-- API Key Settings Modal -->
+  <div id="settings-modal" class="fixed inset-0 z-50 bg-black/95 ios-glass hidden flex flex-col items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 space-y-5">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-gear text-slate-400"></i> 設定 (Gemini API)
+        </h3>
+        <button id="close-settings-btn" class="w-8 h-8 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="space-y-3">
+        <p class="text-xs text-slate-400">さらに高精度な「手書き認識・表読み取り」を行うためのGoogle AI Studio（Gemini API）キーを設定できます。未設定の場合は簡易OCRが動作します。</p>
+        <input type="password" id="api-key-input" placeholder="AIzaSy..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500">
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="text-[11px] text-indigo-400 underline block text-right">無料のAPIキーを取得</a>
+      </div>
+      <button id="save-settings-btn" class="w-full py-3.5 rounded-xl bg-indigo-600 active:bg-indigo-700 text-white font-bold text-sm">
+        保存して閉じる
+      </button>
+    </div>
+  </div>
 
   <!-- Main Viewport -->
   <main class="flex-1 w-full max-w-md mx-auto px-3.5 py-3 flex flex-col space-y-3.5">
@@ -131,10 +155,15 @@
       <!-- Overlay Canvas for Auto-Guide Boundary -->
       <canvas id="camera-overlay-canvas" class="hidden absolute inset-0 w-full h-full object-cover z-20 pointer-events-none"></canvas>
 
-      <!-- Auto Shutter Status Indicator -->
-      <div id="auto-capture-indicator" class="hidden absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-indigo-600/95 text-white text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-2 shadow-lg backdrop-blur-md animate-pulse">
-        <i class="fa-solid fa-camera"></i>
-        <span id="auto-capture-text">静止すると自動撮影します</span>
+      <!-- Auto Shutter Status Indicator with Progress Bar -->
+      <div id="auto-capture-indicator" class="hidden absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-indigo-600/95 text-white text-[11px] font-bold px-4 py-2 rounded-full flex flex-col items-center gap-1 shadow-lg backdrop-blur-md min-w-[200px]">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-camera"></i>
+          <span id="auto-capture-text">書類を枠内に合わせて静止してください</span>
+        </div>
+        <div class="w-full bg-indigo-900 rounded-full h-1 mt-1 overflow-hidden">
+          <div id="auto-capture-progress" class="bg-emerald-400 h-1 transition-all duration-100 ease-linear" style="width: 0%"></div>
+        </div>
       </div>
 
       <!-- Captured Document Canvas -->
@@ -148,10 +177,10 @@
         
         <!-- Toggle Mode -->
         <div class="flex items-center bg-black/75 backdrop-blur-md rounded-full p-1 border border-white/20 text-[11px]">
-          <button id="mode-auto-btn" class="px-3 py-1 rounded-full text-slate-300 font-medium transition-all">
+          <button id="mode-auto-btn" class="px-3 py-1 rounded-full bg-indigo-600 text-white font-semibold transition-all">
             <i class="fa-solid fa-wand-magic-sparkles text-[10px] mr-1"></i>自動撮影
           </button>
-          <button id="mode-manual-btn" class="px-3 py-1 rounded-full bg-indigo-600 text-white font-semibold transition-all">
+          <button id="mode-manual-btn" class="px-3 py-1 rounded-full text-slate-300 font-medium transition-all">
             手動シャッター
           </button>
         </div>
@@ -193,22 +222,16 @@
     <!-- AI OCR Button -->
     <button id="exec-ocr-btn" class="ios-touch w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-indigo-500 via-indigo-600 to-sky-500 active:opacity-90 text-white font-bold text-sm shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 disabled:opacity-40 disabled:pointer-events-none transition-all">
       <i class="fa-solid fa-brain"></i>
-      <span>AIで超高精度OCR文字認識を実行</span>
+      <span>AIで超高精度OCRを実行</span>
     </button>
 
-    <div class="flex items-center justify-between text-[11px] text-slate-400 px-1">
-      <span class="flex items-center gap-1">
-        <i class="fa-solid fa-sparkles text-amber-400"></i>
-        <span>Gemini 3 Flash AIエンジン稼働</span>
-      </span>
-      <span class="text-slate-500">手書きメモ・縦書き・表組み対応</span>
-    </div>
+    <p class="text-[10px] text-slate-400">Gemini 3 Flashを使用した高精度手書き・レイアウト認識（設定からAPIキーを入れるとクラウドで高速実行されます）</p>
 
     <!-- Text Result Box -->
     <div class="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-3.5 space-y-3">
       <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
         <div class="flex items-center space-x-2">
-          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
           <h2 class="text-xs font-bold text-slate-200">認識テキスト (GoodNotes貼り付け可)</h2>
         </div>
         <button id="copy-text-btn" class="ios-touch bg-slate-800 active:bg-slate-700 text-slate-200 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1 border border-slate-700">
@@ -230,7 +253,7 @@
         </button>
       </div>
 
-      <textarea id="ocr-textarea" rows="5" placeholder="書類を取り込み「AIで超高精度OCR文字認識を実行」を押すと、ここに高精度なテキストが抽出されます。直接編集も可能です。" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 font-mono focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder-slate-600 resize-none"></textarea>
+      <textarea id="ocr-textarea" rows="5" placeholder="書類を取り込み「OCR文字認識を実行」を押すと、ここに文字が抽出されます。直接編集も可能です。" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 font-mono focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder-slate-600 resize-none"></textarea>
 
       <!-- Export Actions -->
       <div class="pt-2 border-t border-slate-800 grid grid-cols-2 gap-2">
@@ -239,7 +262,7 @@
             <i class="fa-solid fa-file-pdf text-sm text-red-300"></i>
             <span>GoodNotes用PDF</span>
           </div>
-          <span class="text-[9px] font-normal text-indigo-200">検索可能サンドイッチPDF</span>
+          <span class="text-[9px] font-normal text-indigo-200">OCR後は検索可能PDF</span>
         </button>
 
         <button id="export-img-btn" class="ios-touch py-3 px-3 rounded-xl bg-slate-800 active:bg-slate-750 text-slate-100 border border-slate-700 font-bold text-xs flex flex-col items-center justify-center gap-1 disabled:opacity-45 disabled:pointer-events-none">
@@ -257,7 +280,7 @@
       <div class="flex items-center justify-between">
         <h3 class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
           <i class="fa-solid fa-magnifying-glass text-amber-400"></i>
-          <span>GoodNotes 検索シミュレーター</span>
+          <span>認識テキスト検索</span>
         </h3>
         <span class="text-[10px] text-slate-400">PDF埋め込み確認用</span>
       </div>
@@ -283,13 +306,13 @@
         </div>
         <div>
           <h3 class="text-xs font-bold text-white">書類トリミング & 台形歪み補正</h3>
-          <p class="text-[10px] text-slate-400">AIが書類の角を自動検出。指でドラッグして微調整も可能</p>
+          <p class="text-[10px] text-slate-400">角をドラッグして調整。AI自動検出も可能</p>
         </div>
       </div>
       <div class="flex items-center gap-1.5">
         <button id="ai-detect-corners-btn" class="ios-touch text-[10px] bg-gradient-to-r from-indigo-600 to-sky-600 active:opacity-80 text-white font-semibold px-2.5 py-1.5 rounded-full flex items-center gap-1 shadow-md">
           <i class="fa-solid fa-brain text-[10px]"></i>
-          <span>AI自動枠検出</span>
+          <span>AI枠検出</span>
         </button>
         <button id="auto-corners-btn" class="ios-touch text-[10px] bg-slate-800 text-slate-300 border border-slate-700 px-2 py-1.5 rounded-full">
           全体枠
@@ -316,43 +339,6 @@
     </div>
   </div>
 
-  <!-- API Key Settings Modal -->
-  <div id="api-modal" class="fixed inset-0 z-50 bg-black/70 ios-glass hidden flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-5 space-y-4">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <div class="flex items-center space-x-2">
-          <div class="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-xs text-white">
-            <i class="fa-solid fa-key"></i>
-          </div>
-          <h3 class="text-sm font-bold text-white">Gemini API 設定</h3>
-        </div>
-        <button id="close-api-btn" class="w-7 h-7 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-xs">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-      </div>
-
-      <div class="space-y-2 text-xs text-slate-300">
-        <p class="text-slate-400 leading-relaxed text-[11px]">
-          GitHub Pagesで直接AI OCRを実行する場合、無料のGoogle AI Studio APIキーを登録できます（端末内に安全に保存されます）。
-        </p>
-        <div class="space-y-1">
-          <label class="block text-[11px] font-semibold text-slate-300">Google Gemini API Key</label>
-          <input type="password" id="custom-api-key-input" placeholder="AIzaSy..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 font-mono">
-        </div>
-        <p class="text-[10px] text-indigo-400">※ 未設定でもテスト用OCR（サンプル認識）または環境キーが利用されます。</p>
-      </div>
-
-      <div class="grid grid-cols-2 gap-2 pt-2">
-        <button id="clear-api-key-btn" class="py-2.5 rounded-xl bg-slate-800 text-rose-300 text-xs font-semibold">
-          リセット
-        </button>
-        <button id="save-api-key-btn" class="py-2.5 rounded-xl bg-indigo-600 active:bg-indigo-700 text-white text-xs font-bold">
-          保存する
-        </button>
-      </div>
-    </div>
-  </div>
-
   <!-- Instruction Guide Modal -->
   <div id="guide-modal" class="fixed inset-0 z-50 bg-black/70 ios-glass hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-2xl w-full max-w-md p-5 space-y-4 max-h-[85vh] overflow-y-auto ios-footer">
@@ -374,21 +360,21 @@
             <span class="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px]">1</span>
             書類のスキャン・撮影
           </div>
-          <p class="text-slate-400 text-[11px]">iPhoneカメラで撮影するか写真を選び、コントラスト補正やトリミングを行います。</p>
+          <p class="text-slate-400 text-[11px]">iPhoneカメラで撮影するか写真を選び、コントラスト補正をかけます。</p>
         </div>
         <div class="p-3 rounded-xl bg-slate-800/70 border border-slate-700/60 space-y-1">
           <div class="font-bold text-indigo-300 flex items-center gap-1.5">
             <span class="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px]">2</span>
-            Gemini AIで文字認識
+            AIでOCR実行
           </div>
-          <p class="text-slate-400 text-[11px]">手書きメモや表組み、複雑なレイアウトも高精度に解読。各行の位置座標を正確に取得します。</p>
+          <p class="text-slate-400 text-[11px]">手書き・活字をGemini AIが認識します。結果を確認し、テキストボックスで直接修正も可能です。</p>
         </div>
         <div class="p-3 rounded-xl bg-slate-800/70 border border-slate-700/60 space-y-1">
           <div class="font-bold text-indigo-300 flex items-center gap-1.5">
             <span class="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px]">3</span>
             GoodNotes用PDFを出力
           </div>
-          <p class="text-slate-400 text-[11px]">「GoodNotes用PDF」を押すと、画像の各行に透明テキストを埋め込んだサンドイッチPDFを保存。GoodNotesで開くと虫眼鏡検索や文字選択が可能です。</p>
+          <p class="text-slate-400 text-[11px]">OCR後に「GoodNotes用PDF」を押すと、日本語の透明テキスト付きPDFを保存します。保存したPDFを共有からGoodNotesに読み込んでください。</p>
         </div>
       </div>
 
@@ -442,20 +428,72 @@
     }
 
     // App State Variables
+    let imageRevision = 0;
+    let loadSequence = 0;
+    let cameraSequence = 0;
+    let ocrBusy = false;
+    let ocrTextSnapshot = '';
     let originalImage = null;
+    const rawCanvas = document.createElement('canvas');
+    let toastTimer;
+    let fontBytesCache;
+    let userApiKey = localStorage.getItem('gemini_api_key') || '';
+
+    // Settings Modal Setup
+    const settingsModal = document.getElementById('settings-modal');
+    const apiKeyInput = document.getElementById('api-key-input');
+    document.getElementById('settings-btn').addEventListener('click', () => {
+      apiKeyInput.value = userApiKey;
+      settingsModal.classList.remove('hidden');
+    });
+    document.getElementById('close-settings-btn').addEventListener('click', () => settingsModal.classList.add('hidden'));
+    document.getElementById('save-settings-btn').addEventListener('click', () => {
+      userApiKey = apiKeyInput.value.trim();
+      if (userApiKey) localStorage.setItem('gemini_api_key', userApiKey);
+      else localStorage.removeItem('gemini_api_key');
+      settingsModal.classList.add('hidden');
+      showToast('設定を保存しました');
+    });
+
+    function invalidateOCR() {
+      imageRevision++;
+      ocrResults = [];
+      ocrTextSnapshot = '';
+      ocrTextarea.value = '';
+      document.getElementById('sim-search-input').value = '';
+      document.getElementById('sim-search-count').textContent = '0件一致';
+      document.getElementById('sim-search-count').classList.remove('text-amber-400');
+    }
+    function clearTextPositions() {
+      ocrResults = [];
+      ocrTextSnapshot = '';
+      imageRevision++;
+      renderDocument();
+      document.getElementById('sim-search-input').dispatchEvent(new Event('input'));
+    }
+    function downloadBlob(blob, name) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }
+
     let currentFilter = 'clean';
     let currentRotation = 0;
     let ocrResults = [];
-    let ocrTextSnapshot = '';
     let videoStream = null;
     let cameraFacing = 'environment';
-    let isAutoCaptureMode = false;
-    let autoCaptureTimer = null;
+    
+    // -----------------------------------------------------
+    // Auto Camera State & Improved Sensitivity config
+    let isAutoCaptureMode = true; 
+    const AUTO_STABLE_THRESHOLD = 8.5; // Changed from 3.5 to 8.5 to tolerate slight hand shaking
+    const AUTO_STABLE_TIME_MS = 1200; // Changed from 2200 to 1200 for faster snap
     let stableFrameCount = 0;
     let prevFrameData = null;
     let cameraAnimFrameId = null;
-    let toastTimer = null;
-    let fontBytesCache = null;
+    // -----------------------------------------------------
 
     let cropCorners = [
       { x: 0.1, y: 0.1 },
@@ -479,6 +517,7 @@
     const cameraControls = document.getElementById('camera-controls');
     const autoCaptureIndicator = document.getElementById('auto-capture-indicator');
     const autoCaptureText = document.getElementById('auto-capture-text');
+    const autoCaptureProgress = document.getElementById('auto-capture-progress');
     const modeAutoBtn = document.getElementById('mode-auto-btn');
     const modeManualBtn = document.getElementById('mode-manual-btn');
     const scanBeam = document.getElementById('scan-beam');
@@ -489,10 +528,6 @@
     const openCropBtn = document.getElementById('open-crop-btn');
     const rotateDocBtn = document.getElementById('rotate-doc-btn');
     const filePicker = document.getElementById('file-picker');
-
-    function getApiKey() {
-      return localStorage.getItem('gemini_custom_key') || "";
-    }
 
     function showToast(msg, icon = 'fa-check', isError = false) {
       const toast = document.getElementById('toast');
@@ -509,21 +544,14 @@
       }, 2500);
     }
 
-    function downloadBlob(blob, name) {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = name;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
-    }
-
     modeAutoBtn.addEventListener('click', () => {
       stableFrameCount = 0; prevFrameData = null;
       isAutoCaptureMode = true;
       modeAutoBtn.className = 'px-3 py-1 rounded-full bg-indigo-600 text-white font-semibold transition-all';
       modeManualBtn.className = 'px-3 py-1 rounded-full text-slate-300 font-medium transition-all';
       autoCaptureIndicator.classList.remove('hidden');
-      autoCaptureText.textContent = '静止すると自動撮影します';
+      autoCaptureText.textContent = '書類を枠内に合わせて静止してください';
+      autoCaptureProgress.style.width = '0%';
       showToast('自動撮影モードに切り替えました', 'fa-wand-magic-sparkles');
     });
 
@@ -532,15 +560,16 @@
       modeManualBtn.className = 'px-3 py-1 rounded-full bg-indigo-600 text-white font-semibold transition-all';
       modeAutoBtn.className = 'px-3 py-1 rounded-full text-slate-300 font-medium transition-all';
       autoCaptureIndicator.classList.add('hidden');
-      if (autoCaptureTimer) clearTimeout(autoCaptureTimer);
       showToast('手動シャッターモードに切り替えました', 'fa-camera');
     });
 
     async function startCamera() {
       stopCamera();
+      const session = cameraSequence;
       try {
-        if (!navigator.mediaDevices?.getUserMedia) {
-          throw new Error('カメラはHTTPSで開いてください');
+        if (!navigator.mediaDevices?.getUserMedia) throw new Error('HTTPSが必要です');
+        if (videoStream) {
+          videoStream.getTracks().forEach(t => t.stop());
         }
 
         let stream = null;
@@ -560,6 +589,7 @@
           });
         }
 
+        if (session !== cameraSequence) { stream.getTracks().forEach(t => t.stop()); return; }
         videoStream = stream;
         cameraVideo.srcObject = videoStream;
         cameraVideo.setAttribute('playsinline', '');
@@ -568,7 +598,9 @@
 
         cameraVideo.classList.remove('hidden');
         await cameraVideo.play();
+        if (session !== cameraSequence) return;
 
+        cameraVideo.classList.remove('hidden');
         cameraOverlayCanvas.classList.remove('hidden');
         cameraControls.classList.remove('hidden');
         emptyState.classList.add('hidden');
@@ -576,7 +608,8 @@
 
         if (isAutoCaptureMode) {
           autoCaptureIndicator.classList.remove('hidden');
-          autoCaptureText.textContent = '静止すると自動撮影します';
+          autoCaptureText.textContent = '書類を枠内に合わせて静止してください';
+          autoCaptureProgress.style.width = '0%';
         }
 
         stableFrameCount = 0;
@@ -585,10 +618,12 @@
         if (cameraVideo.readyState >= 2) {
           startCameraAnalysis();
         } else {
-          cameraVideo.onloadedmetadata = () => startCameraAnalysis();
+          cameraVideo.onloadedmetadata = () => {
+            startCameraAnalysis();
+          };
         }
-
       } catch (err) {
+        if (session !== cameraSequence) return;
         stopCamera();
         console.error('Camera startup error:', err);
         showToast('カメラの起動に失敗しました。写真選択をお試しください', 'fa-triangle-exclamation', true);
@@ -596,6 +631,8 @@
     }
 
     function stopCamera() {
+      cameraSequence++;
+      cameraVideo.onloadedmetadata = null;
       if (cameraAnimFrameId) {
         cancelAnimationFrame(cameraAnimFrameId);
         cameraAnimFrameId = null;
@@ -610,7 +647,6 @@
       cameraOverlayCanvas.classList.add('hidden');
       cameraControls.classList.add('hidden');
       autoCaptureIndicator.classList.add('hidden');
-      if (autoCaptureTimer) clearTimeout(autoCaptureTimer);
 
       if (originalImage) {
         scanCanvas.classList.remove('hidden');
@@ -635,7 +671,10 @@
 
       function checkLoop() {
         if (!videoStream || cameraVideo.paused || cameraVideo.ended) return;
-        if (!isAutoCaptureMode) stableSince = 0;
+        if (!isAutoCaptureMode) {
+          stableSince = 0;
+          autoCaptureProgress.style.width = '0%';
+        }
 
         if (cameraVideo.videoWidth > 0 && cameraVideo.videoHeight > 0) {
           cameraOverlayCanvas.width = cameraVideo.videoWidth;
@@ -665,19 +704,26 @@
                 }
                 const avgDiff = diff / (curData.length / 4);
 
-                if (avgDiff < 3.5) {
+                // Improved Sensitivity checking
+                if (avgDiff < AUTO_STABLE_THRESHOLD) {
                   stableFrameCount++;
                   if (!stableSince) stableSince = performance.now();
-                  if (performance.now() - stableSince > 2200) {
-                    autoCaptureText.textContent = '静止確認・自動撮影中...';
+                  
+                  const elapsed = performance.now() - stableSince;
+                  const progressPct = Math.min(100, (elapsed / AUTO_STABLE_TIME_MS) * 100);
+                  autoCaptureProgress.style.width = `${progressPct}%`;
+
+                  if (elapsed > AUTO_STABLE_TIME_MS) {
+                    autoCaptureText.textContent = '自動撮影完了！';
                     capturePhoto();
                     return;
-                  } else if (stableFrameCount > 6) {
-                    autoCaptureText.textContent = `動かさないでください (${Math.max(1, Math.ceil((2200 - (performance.now() - stableSince)) / 1000))})`;
+                  } else if (stableFrameCount > 3) {
+                    autoCaptureText.textContent = `カシャッ.. (${Math.max(1, Math.ceil((AUTO_STABLE_TIME_MS - elapsed) / 1000))})`;
                   }
                 } else {
                   stableSince = 0;
                   stableFrameCount = 0;
+                  autoCaptureProgress.style.width = '0%';
                   autoCaptureText.textContent = '書類を枠内に合わせて静止してください';
                 }
               }
@@ -685,7 +731,6 @@
             } catch (cvErr) {}
           }
         }
-
         cameraAnimFrameId = requestAnimationFrame(checkLoop);
       }
       cameraAnimFrameId = requestAnimationFrame(checkLoop);
@@ -726,23 +771,21 @@
     });
 
     function loadNewImage(src) {
+      const sequence = ++loadSequence;
       const img = new Image();
-      img.onerror = () => showToast('画像を開けません。形式を確認してください', 'fa-triangle-exclamation', true);
+      img.onerror = () => showToast('画像を開けません', 'fa-triangle-exclamation', true);
       img.onload = () => {
+        if (sequence !== loadSequence) return;
         stopCamera();
         const ratio = Math.min(1, 2600 / Math.max(img.width, img.height));
         if (ratio < 1) {
           const reduced = document.createElement('canvas');
-          reduced.width = Math.round(img.width * ratio);
-          reduced.height = Math.round(img.height * ratio);
+          reduced.width = Math.round(img.width * ratio); reduced.height = Math.round(img.height * ratio);
           reduced.getContext('2d').drawImage(img, 0, 0, reduced.width, reduced.height);
           originalImage = reduced;
-        } else {
-          originalImage = img;
-        }
+        } else originalImage = img;
+        invalidateOCR();
         currentRotation = 0;
-        ocrResults = [];
-        ocrTextSnapshot = '';
         emptyState.classList.add('hidden');
         scanCanvas.classList.remove('hidden');
         openCropBtn.disabled = false;
@@ -754,9 +797,8 @@
 
     rotateDocBtn.addEventListener('click', () => {
       if (!originalImage) return;
+      invalidateOCR();
       currentRotation = (currentRotation + 90) % 360;
-      ocrResults = [];
-      ocrTextSnapshot = '';
       renderDocument();
       showToast('90°回転しました', 'fa-rotate-right');
     });
@@ -767,6 +809,7 @@
           b.className = 'filter-pill ios-touch flex-shrink-0 text-xs py-2 px-3.5 rounded-xl font-medium bg-slate-800 text-slate-300 border border-slate-700/70';
         });
         btn.className = 'filter-pill active-pill ios-touch flex-shrink-0 text-xs py-2 px-3.5 rounded-xl font-medium bg-indigo-600 text-white flex items-center gap-1.5';
+        invalidateOCR();
         currentFilter = btn.dataset.filter;
         renderDocument();
       });
@@ -784,6 +827,8 @@
       ctx.rotate((currentRotation * Math.PI) / 180);
       ctx.drawImage(originalImage, -originalImage.width / 2, -originalImage.height / 2);
       ctx.restore();
+      rawCanvas.width = scanCanvas.width; rawCanvas.height = scanCanvas.height;
+      rawCanvas.getContext('2d').drawImage(scanCanvas, 0, 0);
 
       if (currentFilter !== 'original') {
         const imgData = ctx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
@@ -794,9 +839,7 @@
             let r = d[i], g = d[i+1], b = d[i+2];
             let v = 0.299 * r + 0.587 * g + 0.114 * b;
             v = v > 155 ? Math.min(255, v * 1.25) : Math.max(0, (v - 30) * 1.3);
-            d[i] = v;
-            d[i+1] = v;
-            d[i+2] = v;
+            d[i] = v; d[i+1] = v; d[i+2] = v;
           }
         } else if (currentFilter === 'bw') {
           for (let i = 0; i < d.length; i += 4) {
@@ -854,9 +897,7 @@
       cropCtx.lineWidth = 2.5;
       cropCtx.beginPath();
       cropCtx.moveTo(cropCorners[0].x, cropCorners[0].y);
-      for (let i = 1; i < 4; i++) {
-        cropCtx.lineTo(cropCorners[i].x, cropCorners[i].y);
-      }
+      for (let i = 1; i < 4; i++) cropCtx.lineTo(cropCorners[i].x, cropCorners[i].y);
       cropCtx.closePath();
       cropCtx.stroke();
 
@@ -883,93 +924,59 @@
       return sign > 0 && area > 100;
     }
 
-    // AI Corner Detection via Gemini 3 Flash
+    // Gemini API based corner detection
     document.getElementById('ai-detect-corners-btn').addEventListener('click', async () => {
-      if (!scanCanvas.width) return;
+      if (!userApiKey) {
+        showToast('AI枠検出には設定からGemini APIキーが必要です', 'fa-gear', true);
+        return;
+      }
       cropDetectSpinner.classList.remove('hidden');
 
       try {
         const thumbCanvas = document.createElement('canvas');
-        const maxDim = 800;
-        let w = scanCanvas.width;
-        let h = scanCanvas.height;
-        if (w > maxDim || h > maxDim) {
-          const r = Math.min(maxDim / w, maxDim / h);
-          w = Math.round(w * r);
-          h = Math.round(h * r);
-        }
-        thumbCanvas.width = w;
-        thumbCanvas.height = h;
-        thumbCanvas.getContext('2d').drawImage(scanCanvas, 0, 0, w, h);
+        const ratio = Math.min(1, 800 / Math.max(scanCanvas.width, scanCanvas.height));
+        thumbCanvas.width = Math.round(scanCanvas.width * ratio);
+        thumbCanvas.height = Math.round(scanCanvas.height * ratio);
+        thumbCanvas.getContext('2d').drawImage(scanCanvas, 0, 0, thumbCanvas.width, thumbCanvas.height);
         const base64Data = thumbCanvas.toDataURL('image/jpeg', 0.8).split(',')[1];
-
-        const apiKey = getApiKey();
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
 
         const payload = {
           contents: [{
             role: "user",
             parts: [
-              { text: "Detect the 4 corners of the main paper document in this image. Return JSON with normalized coordinates from 0 to 1000:\n{\"topLeft\": [y, x], \"topRight\": [y, x], \"bottomRight\": [y, x], \"bottomLeft\": [y, x]}" },
+              { text: `Detect the 4 corners of the main document. Return JSON: {"topLeft":[y,x],"topRight":[y,x],"bottomRight":[y,x],"bottomLeft":[y,x]} values 0-1000` },
               { inlineData: { mimeType: "image/jpeg", data: base64Data } }
             ]
           }],
           generationConfig: { responseMimeType: "application/json" }
         };
 
-        const res = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${userApiKey}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
         });
 
-        if (!res.ok) throw new Error('AI corner detection API returned ' + res.status);
-
+        if (!res.ok) throw new Error('API request failed');
         const data = await res.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text) {
           const parsed = JSON.parse(text);
-          const detected = [
-            { x: (parsed.topLeft[1] / 1000) * cropCanvas.width, y: (parsed.topLeft[0] / 1000) * cropCanvas.height },
-            { x: (parsed.topRight[1] / 1000) * cropCanvas.width, y: (parsed.topRight[0] / 1000) * cropCanvas.height },
-            { x: (parsed.bottomRight[1] / 1000) * cropCanvas.width, y: (parsed.bottomRight[0] / 1000) * cropCanvas.height },
-            { x: (parsed.bottomLeft[1] / 1000) * cropCanvas.width, y: (parsed.bottomLeft[0] / 1000) * cropCanvas.height }
-          ];
-          if (validQuad(detected)) {
-            cropCorners = detected;
+          const p = (pt) => ({ x: (pt[1] / 1000) * cropCanvas.width, y: (pt[0] / 1000) * cropCanvas.height });
+          const newCorners = [p(parsed.topLeft), p(parsed.topRight), p(parsed.bottomRight), p(parsed.bottomLeft)];
+          if (validQuad(newCorners)) {
+            cropCorners = newCorners;
             drawCropOverlay();
             showToast('AIが書類の四隅を検出しました！', 'fa-brain');
-          } else {
-            throw new Error('検出枠の形状が不適切です');
-          }
+          } else throw new Error('Invalid quad');
         }
       } catch (err) {
-        console.warn('AI detect fallback:', err);
-        // Fallback default margin
-        cropCorners = [
-          { x: cropCanvas.width * 0.08, y: cropCanvas.height * 0.07 },
-          { x: cropCanvas.width * 0.92, y: cropCanvas.height * 0.08 },
-          { x: cropCanvas.width * 0.90, y: cropCanvas.height * 0.93 },
-          { x: cropCanvas.width * 0.09, y: cropCanvas.height * 0.91 }
-        ];
-        drawCropOverlay();
-        showToast('四隅の調整枠をセットしました', 'fa-wand-magic-sparkles');
+        showToast('AI検出に失敗しました。手動で調整してください', 'fa-triangle-exclamation', true);
       } finally {
         cropDetectSpinner.classList.add('hidden');
       }
     });
 
-    // Perspective Warp & Quad Transform
     document.getElementById('apply-crop-btn').addEventListener('click', () => {
-      const srcPts = cropCorners.map(p => ({
-        x: p.x / cropScale,
-        y: p.y / cropScale
-      }));
-
-      if (!validQuad(srcPts)) {
-        showToast('枠が交差または潰れています。四隅を直してください', 'fa-triangle-exclamation', true);
-        return;
-      }
+      const srcPts = cropCorners.map(p => ({ x: p.x / cropScale, y: p.y / cropScale }));
 
       const widthTop = Math.hypot(srcPts[1].x - srcPts[0].x, srcPts[1].y - srcPts[0].y);
       const widthBottom = Math.hypot(srcPts[2].x - srcPts[3].x, srcPts[2].y - srcPts[3].y);
@@ -980,47 +987,37 @@
       const targetH = Math.max(100, Math.round(Math.max(heightLeft, heightRight)));
 
       const outCanvas = document.createElement('canvas');
-      outCanvas.width = targetW;
-      outCanvas.height = targetH;
+      outCanvas.width = targetW; outCanvas.height = targetH;
       const oCtx = outCanvas.getContext('2d');
 
-      const [p0, p1, p2, p3] = srcPts;
-      const dx1 = p1.x - p2.x, dx2 = p3.x - p2.x, dx3 = p0.x - p1.x + p2.x - p3.x;
-      const dy1 = p1.y - p2.y, dy2 = p3.y - p2.y, dy3 = p0.y - p1.y + p2.y - p3.y;
-      const det = dx1 * dy2 - dx2 * dy1;
-      if (Math.abs(det) < 1e-8) {
-        showToast('切り抜き枠を広げてください', 'fa-info-circle', true);
-        return;
+      if (!validQuad(srcPts)) {
+        showToast('枠が交差または潰れています。四隅を直してください', 'fa-triangle-exclamation', true); return;
       }
-
-      const g = (dx3 * dy2 - dx2 * dy3) / det, h = (dx1 * dy3 - dx3 * dy1) / det;
-      const a = p1.x - p0.x + g * p1.x, b = p3.x - p0.x + h * p3.x;
-      const d = p1.y - p0.y + g * p1.y, e = p3.y - p0.y + h * p3.y;
-
-      const source = scanCanvas.getContext('2d').getImageData(0, 0, scanCanvas.width, scanCanvas.height);
-      const output = oCtx.createImageData(targetW, targetH);
-
-      for (let y = 0; y < targetH; y++) {
-        for (let x = 0; x < targetW; x++) {
-          const u = x / (targetW - 1), v = y / (targetH - 1);
-          const den = g * u + h * v + 1;
-          const sx = Math.max(0, Math.min(scanCanvas.width - 1, (a * u + b * v + p0.x) / den));
-          const sy = Math.max(0, Math.min(scanCanvas.height - 1, (d * u + e * v + p0.y) / den));
-          const ix = Math.floor(sx), iy = Math.floor(sy), fx = sx - ix, fy = sy - iy;
-          const jx = Math.min(ix + 1, scanCanvas.width - 1), jy = Math.min(iy + 1, scanCanvas.height - 1);
-          const idx = (y * targetW + x) * 4;
-
-          for (let c = 0; c < 3; c++) {
-            output.data[idx + c] =
-              source.data[(iy * scanCanvas.width + ix) * 4 + c] * (1 - fx) * (1 - fy) +
-              source.data[(iy * scanCanvas.width + jx) * 4 + c] * fx * (1 - fy) +
-              source.data[(jy * scanCanvas.width + ix) * 4 + c] * (1 - fx) * fy +
-              source.data[(jy * scanCanvas.width + jx) * 4 + c] * fx * fy;
-          }
-          output.data[idx + 3] = 255;
-        }
+      const [p0,p1,p2,p3] = srcPts;
+      const dx1=p1.x-p2.x, dx2=p3.x-p2.x, dx3=p0.x-p1.x+p2.x-p3.x;
+      const dy1=p1.y-p2.y, dy2=p3.y-p2.y, dy3=p0.y-p1.y+p2.y-p3.y;
+      const det=dx1*dy2-dx2*dy1;
+      if (Math.abs(det) < 1e-8) { showToast('切り抜き枠を広げてください', 'fa-info-circle', true); return; }
+      const g=(dx3*dy2-dx2*dy3)/det, h=(dx1*dy3-dx3*dy1)/det;
+      const a=p1.x-p0.x+g*p1.x, b=p3.x-p0.x+h*p3.x;
+      const d=p1.y-p0.y+g*p1.y, e=p3.y-p0.y+h*p3.y;
+      const source=rawCanvas.getContext('2d').getImageData(0,0,rawCanvas.width,rawCanvas.height);
+      const output=oCtx.createImageData(targetW,targetH);
+      for (let y=0; y<targetH; y++) for (let x=0; x<targetW; x++) {
+        const u=x/(targetW-1), v=y/(targetH-1), den=g*u+h*v+1;
+        const sx=Math.max(0,Math.min(rawCanvas.width-1,(a*u+b*v+p0.x)/den));
+        const sy=Math.max(0,Math.min(rawCanvas.height-1,(d*u+e*v+p0.y)/den));
+        const ix=Math.floor(sx), iy=Math.floor(sy), fx=sx-ix, fy=sy-iy;
+        const jx=Math.min(ix+1,rawCanvas.width-1), jy=Math.min(iy+1,rawCanvas.height-1);
+        const idx=(y*targetW+x)*4;
+        for(let c=0;c<3;c++) output.data[idx+c]=
+          source.data[(iy*rawCanvas.width+ix)*4+c]*(1-fx)*(1-fy)+
+          source.data[(iy*rawCanvas.width+jx)*4+c]*fx*(1-fy)+
+          source.data[(jy*rawCanvas.width+ix)*4+c]*(1-fx)*fy+
+          source.data[(jy*rawCanvas.width+jx)*4+c]*fx*fy;
+        output.data[idx+3]=255;
       }
-      oCtx.putImageData(output, 0, 0);
+      oCtx.putImageData(output,0,0);
 
       const croppedDataUrl = outCanvas.toDataURL('image/jpeg', 0.95);
       cropModal.classList.add('hidden');
@@ -1037,26 +1034,15 @@
         y: (clientY - rect.top) * cropCanvas.height / rect.height
       };
     }
-
     function onPointerDown(e) {
       const pos = getTouchPos(e);
-      let closestIdx = -1;
-      let minDistance = 45;
-
+      let closestIdx = -1, minDistance = 45;
       cropCorners.forEach((pt, idx) => {
         const dist = Math.hypot(pt.x - pos.x, pt.y - pos.y);
-        if (dist < minDistance) {
-          minDistance = dist;
-          closestIdx = idx;
-        }
+        if (dist < minDistance) { minDistance = dist; closestIdx = idx; }
       });
-
-      if (closestIdx !== -1) {
-        activeCornerIndex = closestIdx;
-        e.preventDefault();
-      }
+      if (closestIdx !== -1) { activeCornerIndex = closestIdx; e.preventDefault(); }
     }
-
     function onPointerMove(e) {
       if (activeCornerIndex === -1) return;
       e.preventDefault();
@@ -1067,443 +1053,243 @@
       };
       drawCropOverlay();
     }
-
-    function onPointerUp() {
-      activeCornerIndex = -1;
-    }
+    function onPointerUp() { activeCornerIndex = -1; }
 
     cropCanvas.addEventListener('mousedown', onPointerDown);
     window.addEventListener('mousemove', onPointerMove);
     window.addEventListener('mouseup', onPointerUp);
-
     cropCanvas.addEventListener('touchstart', onPointerDown, { passive: false });
     window.addEventListener('touchmove', onPointerMove, { passive: false });
     window.addEventListener('touchend', onPointerUp);
-    window.addEventListener('touchcancel', onPointerUp);
 
     document.getElementById('auto-corners-btn').addEventListener('click', () => {
-      cropCorners = [
-        { x: 0, y: 0 },
-        { x: cropCanvas.width, y: 0 },
-        { x: cropCanvas.width, y: cropCanvas.height },
-        { x: 0, y: cropCanvas.height }
-      ];
+      cropCorners = [{ x: 0, y: 0 }, { x: cropCanvas.width, y: 0 }, { x: cropCanvas.width, y: cropCanvas.height }, { x: 0, y: cropCanvas.height }];
       drawCropOverlay();
       showToast('トリミング枠をリセットしました', 'fa-rotate-left');
     });
-
     document.getElementById('cancel-crop-btn').addEventListener('click', () => {
-      onPointerUp();
-      cropModal.classList.add('hidden');
+      onPointerUp(); cropModal.classList.add('hidden');
     });
 
-    // Execute Gemini AI OCR
+    document.getElementById('sample-btn').addEventListener('click', () => {
+      const sample = document.createElement('canvas');
+      sample.width = 1200; sample.height = 1600;
+      const sCtx = sample.getContext('2d');
+      sCtx.fillStyle = '#f8fafc'; sCtx.fillRect(0, 0, 1200, 1600);
+      sCtx.fillStyle = '#1e293b'; sCtx.fillRect(80, 80, 1040, 10);
+      sCtx.fillStyle = '#0f172a'; sCtx.font = 'bold 44px -apple-system, sans-serif'; sCtx.fillText('業務報告書 & 企画議事録', 80, 160);
+      sCtx.font = '22px -apple-system, sans-serif'; sCtx.fillStyle = '#64748b'; sCtx.fillText('日付: 2026年10月13日   |   作成者: プロジェクト推進部', 80, 210);
+      sCtx.fillStyle = '#1e293b'; sCtx.font = 'bold 30px -apple-system, sans-serif'; sCtx.fillText('1. 本日の検討事項と決定項目', 80, 290);
+      sCtx.font = '24px -apple-system, sans-serif'; sCtx.fillStyle = '#334155';
+      ['・ GoodNotesとの連携における検索可能PDF（透明文字）の導入を正式決定。',
+       '・ iPadおよびiPhoneでの取り込み時に、OCR精度98%以上を維持する。',
+       '・ 手書きメモと活字書類の両方で、自動コントラスト補正を適用すること。'].forEach((line, i) => sCtx.fillText(line, 100, 350 + i * 55));
+      loadNewImage(sample.toDataURL('image/jpeg', 0.95));
+    });
+
+    // Gemini API OCR or Fallback Tesseract
     execOcrBtn.addEventListener('click', async () => {
-      if (!originalImage) {
-        showToast('まず書類を撮影または選択してください', 'fa-info-circle', true);
+      if (!originalImage || ocrBusy) {
+        if (!originalImage) showToast('まず書類を撮影または選択してください', 'fa-info-circle', true);
         return;
       }
+      stopCamera(); renderDocument();
+      const revision = imageRevision;
+      
+      const ocrCanvas = document.createElement('canvas');
+      const ratio = Math.min(1, 1600 / Math.max(scanCanvas.width, scanCanvas.height));
+      ocrCanvas.width = Math.round(scanCanvas.width * ratio); 
+      ocrCanvas.height = Math.round(scanCanvas.height * ratio);
+      ocrCanvas.getContext('2d').drawImage(scanCanvas, 0, 0, ocrCanvas.width, ocrCanvas.height);
+      const base64Data = ocrCanvas.toDataURL('image/jpeg', 0.85).split(',')[1];
 
-      execOcrBtn.disabled = true;
-      scanBeam.classList.remove('hidden');
-      execOcrBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Gemini AIが文字を解析中...</span>';
+      ocrBusy = true; execOcrBtn.disabled = true; scanBeam.classList.remove('hidden');
 
-      try {
-        const ocrCanvas = document.createElement('canvas');
-        const maxDim = 1600;
-        let w = scanCanvas.width;
-        let h = scanCanvas.height;
-        if (w > maxDim || h > maxDim) {
-          const ratio = Math.min(maxDim / w, maxDim / h);
-          w = Math.round(w * ratio);
-          h = Math.round(h * ratio);
+      if (userApiKey) {
+        // --- Gemini AI OCR ---
+        execOcrBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Gemini AIが認識中...</span>';
+        try {
+          const payload = {
+            contents: [{
+              role: "user",
+              parts: [
+                { text: `Extract all visible text with coordinates in JSON format: {"fullText": "readable text with line breaks", "blocks": [{"text": "phrase", "box_2d": [ymin, xmin, ymax, xmax]}]}` },
+                { inlineData: { mimeType: "image/jpeg", data: base64Data } }
+              ]
+            }],
+            generationConfig: { responseMimeType: "application/json" }
+          };
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${userApiKey}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+          });
+          if (!res.ok) throw new Error('API Error');
+          const data = await res.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!text) throw new Error('No text found');
+          
+          if (revision !== imageRevision) return;
+          const parsed = JSON.parse(text);
+          ocrResults = parsed.blocks || [];
+          ocrTextarea.value = parsed.fullText || ''; ocrTextSnapshot = ocrTextarea.value;
+          showToast('Gemini AIによる文字認識が完了しました！', 'fa-brain');
+        } catch (err) {
+          showToast('Gemini API通信エラー。APIキーを確認してください', 'fa-triangle-exclamation', true);
+        } finally {
+          ocrBusy = false; execOcrBtn.disabled = false; scanBeam.classList.add('hidden');
+          execOcrBtn.innerHTML = '<i class="fa-solid fa-brain"></i><span>AIで超高精度OCRを実行</span>';
         }
-        ocrCanvas.width = w;
-        ocrCanvas.height = h;
-        ocrCanvas.getContext('2d').drawImage(scanCanvas, 0, 0, w, h);
-
-        const base64Data = ocrCanvas.toDataURL('image/jpeg', 0.85).split(',')[1];
-
-        const systemPrompt = `You are a world-class Japanese Document OCR & Layout Understanding Engine for iPad GoodNotes.
-Task:
-1. Extract ALL text faithfully (including handwriting, notes, headings, dates, numbers, and tables) in natural reading order.
-2. Provide precise bounding boxes for each sentence or line block so they can be accurately mapped to searchable invisible text in GoodNotes.
-JSON Schema:
-{
-  "fullText": "Full reconstructed readable text with proper line breaks",
-  "blocks": [
-    {
-      "text": "sentence or phrase line",
-      "box_2d": [ymin, xmin, ymax, xmax]
-    }
-  ]
-}
-Values in box_2d are normalized between 0 and 1000.`;
-
-        const payload = {
-          contents: [{
-            role: "user",
-            parts: [
-              { text: "Perform high-accuracy Japanese & English OCR on this document and return JSON." },
-              { inlineData: { mimeType: "image/jpeg", data: base64Data } }
-            ]
-          }],
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          generationConfig: { responseMimeType: "application/json" }
-        };
-
-        const apiKey = getApiKey();
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
-
-        let response = null;
-        for (let attempt = 0; attempt < 2; attempt++) {
-          try {
-            response = await fetch(apiUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload)
+      } else {
+        // --- Fallback Local Tesseract OCR ---
+        execOcrBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>端末内で認識データを準備中...</span>';
+        let worker;
+        try {
+          if (!window.Tesseract) throw new Error('OCRライブラリなし');
+          worker = await Tesseract.createWorker(['jpn', 'eng'], 1, {
+            logger: m => {
+              const span = execOcrBtn.querySelector('span');
+              if (span) span.textContent = m.status === 'recognizing text' ? `文字を認識中... ${Math.round((m.progress || 0) * 100)}%` : '認識データを準備中...';
+            }
+          });
+          await worker.setParameters({tessedit_pageseg_mode: '3', user_defined_dpi: '300'});
+          const {data} = await worker.recognize(ocrCanvas, {}, {text: true, blocks: true});
+          if (revision !== imageRevision) return;
+          ocrResults = [];
+          for (const block of data.blocks || []) for (const para of block.paragraphs || []) for (const line of para.lines || []) {
+            const box = line.bbox;
+            if (line.text?.trim() && box) ocrResults.push({
+              text: line.text.trim(), box_2d: [box.y0/ocrCanvas.height*1000,box.x0/ocrCanvas.width*1000,box.y1/ocrCanvas.height*1000,box.x1/ocrCanvas.width*1000]
             });
-            if (response.ok) break;
-          } catch (e) {
-            await new Promise(r => setTimeout(r, 800));
           }
+          ocrTextarea.value = data.text || ''; ocrTextSnapshot = ocrTextarea.value;
+          showToast(ocrTextarea.value.trim() ? '端末内文字認識が完了しました' : '文字を認識できませんでした', 'fa-info-circle', !ocrTextarea.value.trim());
+        } catch (err) {
+          showToast('文字認識に失敗しました', 'fa-triangle-exclamation', true);
+        } finally {
+          if (worker) await worker.terminate().catch(()=>{});
+          ocrBusy = false; execOcrBtn.disabled = false; scanBeam.classList.add('hidden');
+          execOcrBtn.innerHTML = '<i class="fa-solid fa-brain"></i><span>AIで超高精度OCRを実行</span>';
         }
-
-        if (!response || !response.ok) {
-          throw new Error('API通信エラー (Status: ' + (response?.status || 'Network') + ')');
-        }
-
-        const resJson = await response.json();
-        const textContent = resJson.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        if (textContent) {
-          const parsed = JSON.parse(textContent);
-          ocrTextarea.value = parsed.fullText || '';
-          ocrTextSnapshot = ocrTextarea.value;
-          ocrResults = (parsed.blocks || []).filter(b => b.text && b.box_2d);
-          showToast('AI文字認識が完了しました！', 'fa-brain');
-        } else {
-          throw new Error('文字を抽出できませんでした');
-        }
-
-      } catch (err) {
-        console.error('Gemini OCR Error:', err);
-        // Fallback demo text
-        ocrTextarea.value = `業務報告書 & 企画議事録\n日付: 2026年10月13日   |   作成者: プロジェクト推進部\n\n1. 本日の検討事項と決定項目\n・ GoodNotesとの連携における検索可能PDF（透明文字）の導入を正式決定。\n・ iPadおよびiPhoneでの取り込み時に、OCR精度99%以上を維持する。\n・ 手書きメモと活字書類の両方で、自動コントラスト補正を適用すること。\n・ 次回レビューは来週金曜日15:00より本社会議室にて実施。\n\n【進捗一覧】\nAI OCRエンジン統合: 完了 (高精度Gemini 3 Flash)\niOS Safariカメラ最適化: 対応済\nPDF-Libサンドイッチ文字レイヤー: 完了`;
-        ocrTextSnapshot = ocrTextarea.value;
-        ocrResults = [
-          { text: "業務報告書 & 企画議事録", box_2d: [80, 66, 110, 800] },
-          { text: "日付: 2026年10月13日", box_2d: [120, 66, 140, 500] },
-          { text: "1. 本日の検討事項と決定項目", box_2d: [170, 66, 195, 600] },
-          { text: "GoodNotesとの連携における検索可能PDF", box_2d: [210, 80, 235, 700] },
-          { text: "AI OCRエンジン統合", box_2d: [420, 90, 440, 400] }
-        ];
-        showToast('サンプルOCRテキストを適用しました (API設定をご確認ください)', 'fa-info-circle');
-      } finally {
-        scanBeam.classList.add('hidden');
-        execOcrBtn.disabled = false;
-        execOcrBtn.innerHTML = '<i class="fa-solid fa-brain"></i><span>AIで超高精度OCR文字認識を実行</span>';
       }
     });
 
-    // Text formatting actions
+    ocrTextarea.addEventListener('input', clearTextPositions);
     document.getElementById('copy-text-btn').addEventListener('click', () => {
       const text = ocrTextarea.value;
-      if (!text) {
-        showToast('コピーするテキストがありません', 'fa-info-circle', true);
-        return;
-      }
-      const tempArea = document.createElement('textarea');
-      tempArea.value = text;
-      tempArea.style.position = 'fixed';
-      tempArea.style.left = '-9999px';
-      document.body.appendChild(tempArea);
-      tempArea.select();
-      const copied = document.execCommand('copy');
-      document.body.removeChild(tempArea);
-      showToast(copied ? 'テキストをコピーしました！' : 'コピーできませんでした', 'fa-copy', !copied);
+      if (!text) return showToast('コピーするテキストがありません', 'fa-info-circle', true);
+      navigator.clipboard.writeText(text).then(()=>showToast('コピーしました！', 'fa-copy')).catch(()=>showToast('コピー失敗', 'fa-triangle-exclamation', true));
     });
-
     document.getElementById('clean-newlines-btn').addEventListener('click', () => {
       if (!ocrTextarea.value) return;
-      ocrTextarea.value = ocrTextarea.value.replace(/([^\n])\n(?=[^\n])/g, '$1');
-      showToast('改行を整理しました', 'fa-check');
+      ocrTextarea.value = ocrTextarea.value.replace(/([^
+])
+(?=[^
+])/g, '$1'); clearTextPositions(); showToast('改行を整理しました', 'fa-check');
     });
-
     document.getElementById('to-bullets-btn').addEventListener('click', () => {
       if (!ocrTextarea.value) return;
-      const lines = ocrTextarea.value.split('\n').filter(l => l.trim().length > 0);
-      ocrTextarea.value = lines.map(l => l.startsWith('・') ? l : `・ ${l}`).join('\n');
-      showToast('箇条書きに整形しました', 'fa-check');
+      ocrTextarea.value = ocrTextarea.value.split('
+').filter(l => l.trim()).map(l => l.startsWith('・') ? l : `・ ${l}`).join('
+');
+      clearTextPositions(); showToast('箇条書きに整形しました', 'fa-check');
     });
+    document.getElementById('clear-text-btn').addEventListener('click', () => { ocrTextarea.value = ''; clearTextPositions(); showToast('消去しました', 'fa-trash'); });
 
-    document.getElementById('clear-text-btn').addEventListener('click', () => {
-      ocrTextarea.value = '';
-      ocrResults = [];
-      ocrTextSnapshot = '';
-      showToast('テキストを消去しました', 'fa-trash');
-    });
-
-    // GoodNotes Searchable Sandwich PDF Export
+    // PDF Export
     exportPdfBtn.addEventListener('click', async () => {
-      if (!originalImage) return;
+      if (!originalImage || ocrBusy) { showToast('画像を取り込み、OCR処理の完了をお待ちください', 'fa-info-circle', true); return; }
+      stopCamera(); renderDocument();
 
+      const pdfText = ocrTextarea.value;
+      const pdfResults = ocrTextSnapshot === pdfText ? ocrResults.map(item => ({text:item.text,box_2d:[...item.box_2d]})) : [];
       exportPdfBtn.disabled = true;
       exportPdfBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-sm"></i><span>PDF生成中...</span>';
 
       try {
+        if (!window.PDFLib) throw new Error('PDFライブラリを読み込めません');
         const { PDFDocument, rgb } = PDFLib;
         const pdfDoc = await PDFDocument.create();
 
         const jpegDataUrl = scanCanvas.toDataURL('image/jpeg', 0.92);
         const imageBytes = await fetch(jpegDataUrl).then(res => res.arrayBuffer());
         const embeddedImage = await pdfDoc.embedJpg(imageBytes);
-
-        const imgWidth = scanCanvas.width;
-        const imgHeight = scanCanvas.height;
+        const imgWidth = scanCanvas.width, imgHeight = scanCanvas.height;
         const page = pdfDoc.addPage([imgWidth, imgHeight]);
+        page.drawImage(embeddedImage, { x: 0, y: 0, width: imgWidth, height: imgHeight });
 
-        page.drawImage(embeddedImage, {
-          x: 0,
-          y: 0,
-          width: imgWidth,
-          height: imgHeight,
-        });
-
-        const rawLines = ocrTextarea.value.split('\n').filter(l => l.trim().length > 0);
-
+        const rawLines = pdfText.split('
+').filter(l => l.trim().length > 0);
         if (rawLines.length) {
-          if (window.fontkit) {
-            pdfDoc.registerFontkit(fontkit);
-            if (!fontBytesCache) {
-              const res = await fetch('https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@main/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf', {
-                signal: AbortSignal.timeout(60000)
-              });
-              if (res.ok) fontBytesCache = await res.arrayBuffer();
-            }
+          pdfDoc.registerFontkit(fontkit);
+          if (!fontBytesCache) {
+            const res = await fetch('https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@main/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf');
+            fontBytesCache = await res.arrayBuffer();
           }
-
-          let font = null;
-          if (fontBytesCache) {
-            try { font = await pdfDoc.embedFont(fontBytesCache, { subset: true }); } catch (fe) {}
-          }
-          if (!font) {
-            font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-          }
-
-          const hasValidBlocks = ocrResults && ocrResults.length > 0 && ocrTextSnapshot === ocrTextarea.value;
-          const entries = hasValidBlocks ? ocrResults : rawLines.map((text, i) => ({
-            text, box_2d: [(i + 1) * 1000 / (rawLines.length + 2), 25, (i + 1.8) * 1000 / (rawLines.length + 2), 975]
+          const font = await pdfDoc.embedFont(fontBytesCache, {subset: true});
+          const entries = pdfResults.length ? pdfResults : rawLines.map((text,i) => ({
+            text, box_2d: [(i+1)*1000/(rawLines.length+2), 25, (i+1.8)*1000/(rawLines.length+2), 975]
           }));
-
           for (const item of entries) {
-            const [ymin, xmin, ymax, xmax] = item.box_2d;
-            const boxW = Math.max(10, ((xmax - xmin) / 1000) * imgWidth);
-            const boxH = Math.max(10, ((ymax - ymin) / 1000) * imgHeight);
-            const posX = (xmin / 1000) * imgWidth;
-            const posY = imgHeight - (ymax / 1000) * imgHeight;
-            const text = item.text.replace(/[\u0000-\u001f\u007f]/g, ' ');
-            if (!text.trim()) continue;
-
-            let size = Math.max(8, Math.min(36, boxH * 0.85));
-            try {
-              const atOne = font.widthOfTextAtSize(text, 1);
-              if (atOne > 0) size = Math.max(6, Math.min(boxH * 0.85, boxW / atOne));
-            } catch (calcErr) {}
-
-            page.drawText(text, {
-              x: posX,
-              y: posY,
-              size,
-              font,
-              color: rgb(0, 0, 0),
-              opacity: 0, // Invisible text layer for GoodNotes search & selection
-            });
+            const [ymin,xmin,ymax,xmax] = item.box_2d;
+            const width=(xmax-xmin)/1000*imgWidth, height=(ymax-ymin)/1000*imgHeight;
+            const text=item.text.replace(/[ -]/g,' ');
+            if (!text) continue;
+            const atOne=font.widthOfTextAtSize(text,1);
+            const size=Math.max(0.1,Math.min(height*0.8,width/Math.max(atOne,0.1)));
+            page.drawText(text,{x:xmin/1000*imgWidth,y:imgHeight-ymax/1000*imgHeight,size,font,color:rgb(0,0,0),opacity:0});
           }
         }
 
         const pdfBytes = await pdfDoc.save();
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-        downloadBlob(blob, `GoodScan_${new Date().toISOString().slice(0, 10)}.pdf`);
-
-        showToast('GoodNotes用PDFを出力しました！', 'fa-file-pdf');
+        downloadBlob(new Blob([pdfBytes], { type: 'application/pdf' }), `GoodScan_${new Date().toLocaleDateString('sv-SE')}.pdf`);
+        showToast(pdfText.trim() ? '日本語テキスト付きPDFを出力しました' : '画像のみのPDFを出力しました', 'fa-file-pdf');
 
       } catch (err) {
-        console.error('PDF generation error:', err);
-        showToast('PDF生成中にエラーが発生しました', 'fa-circle-exclamation', true);
+        showToast('PDF生成に失敗しました。', 'fa-circle-exclamation', true);
       } finally {
         exportPdfBtn.disabled = false;
-        exportPdfBtn.innerHTML = `
-          <div class="flex items-center gap-1.5">
-            <i class="fa-solid fa-file-pdf text-sm text-red-300"></i>
-            <span>GoodNotes用PDF</span>
-          </div>
-          <span class="text-[9px] font-normal text-indigo-200">検索可能サンドイッチPDF</span>
-        `;
+        exportPdfBtn.innerHTML = `<div class="flex items-center gap-1.5"><i class="fa-solid fa-file-pdf text-sm text-red-300"></i><span>GoodNotes用PDF</span></div><span class="text-[9px] font-normal text-indigo-200">OCR後は検索可能PDF</span>`;
       }
     });
 
     document.getElementById('export-img-btn').addEventListener('click', () => {
-      if (!originalImage) return;
-      stopCamera(); renderDocument();
+      if (!originalImage) return; stopCamera(); renderDocument();
       scanCanvas.toBlob(blob => {
-        if (!blob) { showToast('画像を保存できませんでした', 'fa-image', true); return; }
         downloadBlob(blob, `GoodScan_Doc_${Date.now()}.jpg`);
         showToast('補正画像を保存しました', 'fa-image');
       }, 'image/jpeg', 0.95);
     });
 
-    // GoodNotes Search Simulator
+    // Simulator
     const simInput = document.getElementById('sim-search-input');
     const simCount = document.getElementById('sim-search-count');
-
     simInput.addEventListener('input', () => {
       const query = simInput.value.trim().toLowerCase();
       renderDocument();
-
-      if (!query) {
-        simCount.textContent = '0件一致';
-        simCount.classList.remove('text-amber-400');
-        return;
-      }
-
+      if (!query) { simCount.textContent = '0件一致'; simCount.classList.remove('text-amber-400'); return; }
       let matches = 0;
-      const allText = ocrTextarea.value.toLowerCase();
-      const foundCount = allText.split(query).length - 1;
-
       if (ocrResults && ocrResults.length > 0) {
-        ctx.save();
-        ctx.fillStyle = 'rgba(250, 204, 21, 0.45)';
-        ctx.strokeStyle = '#eab308';
-        ctx.lineWidth = 3;
-
+        ctx.save(); ctx.fillStyle = 'rgba(250, 204, 21, 0.45)'; ctx.strokeStyle = '#eab308'; ctx.lineWidth = 3;
         ocrResults.forEach(item => {
           if (item.text && item.text.toLowerCase().includes(query)) {
             matches++;
             const [ymin, xmin, ymax, xmax] = item.box_2d;
-            const x = (xmin / 1000) * scanCanvas.width;
-            const y = (ymin / 1000) * scanCanvas.height;
-            const w = ((xmax - xmin) / 1000) * scanCanvas.width;
-            const h = ((ymax - ymin) / 1000) * scanCanvas.height;
-            ctx.fillRect(x, y, w, h);
-            ctx.strokeRect(x, y, w, h);
+            const x=(xmin/1000)*scanCanvas.width, y=(ymin/1000)*scanCanvas.height, w=((xmax-xmin)/1000)*scanCanvas.width, h=((ymax-ymin)/1000)*scanCanvas.height;
+            ctx.fillRect(x,y,w,h); ctx.strokeRect(x,y,w,h);
           }
         });
         ctx.restore();
       }
-
-      const totalMatches = Math.max(matches, foundCount);
+      const totalMatches = Math.max(matches, ocrTextarea.value.toLowerCase().split(query).length - 1);
       simCount.textContent = `${totalMatches}件一致`;
-      if (totalMatches > 0) {
-        simCount.classList.add('text-amber-400');
-      } else {
-        simCount.classList.remove('text-amber-400');
-      }
+      if (totalMatches > 0) simCount.classList.add('text-amber-400'); else simCount.classList.remove('text-amber-400');
     });
 
-    // Sample Document Loader
-    document.getElementById('sample-btn').addEventListener('click', () => {
-      const sample = document.createElement('canvas');
-      sample.width = 1200;
-      sample.height = 1600;
-      const sCtx = sample.getContext('2d');
+    const guideModal = document.getElementById('guide-modal');
+    document.getElementById('guide-modal-btn').addEventListener('click', () => guideModal.classList.remove('hidden'));
+    document.getElementById('close-guide-btn').addEventListener('click', () => guideModal.classList.add('hidden'));
+    document.getElementById('guide-ok-btn').addEventListener('click', () => guideModal.classList.add('hidden'));
 
-      sCtx.fillStyle = '#f8fafc';
-      sCtx.fillRect(0, 0, 1200, 1600);
-
-      sCtx.fillStyle = '#1e293b';
-      sCtx.fillRect(80, 80, 1040, 10);
-
-      sCtx.fillStyle = '#0f172a';
-      sCtx.font = 'bold 44px -apple-system, sans-serif';
-      sCtx.fillText('業務報告書 & 企画議事録', 80, 160);
-
-      sCtx.font = '22px -apple-system, sans-serif';
-      sCtx.fillStyle = '#64748b';
-      sCtx.fillText('日付: 2026年10月13日   |   作成者: プロジェクト推進部', 80, 210);
-
-      sCtx.fillStyle = '#1e293b';
-      sCtx.font = 'bold 30px -apple-system, sans-serif';
-      sCtx.fillText('1. 本日の検討事項と決定項目', 80, 290);
-
-      sCtx.font = '24px -apple-system, sans-serif';
-      sCtx.fillStyle = '#334155';
-      const lines = [
-        '・ GoodNotesとの連携における検索可能PDF（透明文字）の導入を正式決定。',
-        '・ iPadおよびiPhoneでの取り込み時に、OCR精度99%以上を維持する。',
-        '・ 手書きメモと活字書類の両方で、自動コントラスト補正を適用すること。',
-        '・ 次回レビューは来週金曜日15:00より本社会議室にて実施。'
-      ];
-      lines.forEach((line, i) => {
-        sCtx.fillText(line, 100, 350 + i * 55);
-      });
-
-      sCtx.fillStyle = '#e2e8f0';
-      sCtx.fillRect(80, 620, 1040, 60);
-      sCtx.fillStyle = '#0f172a';
-      sCtx.font = 'bold 22px -apple-system, sans-serif';
-      sCtx.fillText('項目名', 110, 658);
-      sCtx.fillText('担当', 520, 658);
-      sCtx.fillText('ステータス', 820, 658);
-
-      const tableData = [
-        ['AI OCRエンジン統合', '高橋', '完了 (Gemini 3 Flash)'],
-        ['iOS Safariカメラ最適化', '佐藤', '対応済'],
-        ['PDF-Libサンドイッチ文字レイヤー', '開発班', '検証済']
-      ];
-      tableData.forEach((row, idx) => {
-        sCtx.fillStyle = idx % 2 === 0 ? '#ffffff' : '#f1f5f9';
-        sCtx.fillRect(80, 680 + idx * 60, 1040, 60);
-        sCtx.fillStyle = '#334155';
-        sCtx.font = '22px -apple-system, sans-serif';
-        sCtx.fillText(row[0], 110, 718 + idx * 60);
-        sCtx.fillText(row[1], 520, 718 + idx * 60);
-        sCtx.fillText(row[2], 820, 718 + idx * 60);
-      });
-
-      sCtx.fillStyle = '#94a3b8';
-      sCtx.font = '20px -apple-system, sans-serif';
-      sCtx.fillText('※ 本書類はGoodScan AIの文字認識テスト用サンプルドキュメントです。', 80, 1480);
-
-      loadNewImage(sample.toDataURL('image/jpeg', 0.95));
-    });
-
-    // API Key Modal Controls
-    const apiModal = document.getElementById('api-modal');
-    const customApiKeyInput = document.getElementById('custom-api-key-input');
-    document.getElementById('api-key-btn').addEventListener('click', () => {
-      customApiKeyInput.value = localStorage.getItem('gemini_custom_key') || "";
-      apiModal.classList.remove('hidden');
-    });
-    document.getElementById('close-api-btn').addEventListener('click', () => apiModal.classList.add('hidden'));
-    document.getElementById('save-api-key-btn').addEventListener('click', () => {
-      const key = customApiKeyInput.value.trim();
-      if (key) {
-        localStorage.setItem('gemini_custom_key', key);
-        showToast('APIキーを端末に保存しました', 'fa-key');
-      } else {
-        localStorage.removeItem('gemini_custom_key');
-        showToast('デフォルトキー設定に戻しました', 'fa-rotate-left');
-      }
-      apiModal.classList.add('hidden');
-    });
-    document.getElementById('clear-api-key-btn').addEventListener('click', () => {
-      localStorage.removeItem('gemini_custom_key');
-      customApiKeyInput.value = '';
-      showToast('APIキーをクリアしました', 'fa-trash');
-      apiModal.classList.add('hidden');
-    });
-
-    // Guide Modal
-    const modal = document.getElementById('guide-modal');
-    document.getElementById('guide-modal-btn').addEventListener('click', () => modal.classList.remove('hidden'));
-    document.getElementById('close-guide-btn').addEventListener('click', () => modal.classList.add('hidden'));
-    document.getElementById('guide-ok-btn').addEventListener('click', () => modal.classList.add('hidden'));
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) modal.classList.add('hidden');
-    });
-
-    // Background safety for iPhone
+    modeAutoBtn.click();
     document.addEventListener('visibilitychange', () => { if (document.hidden) stopCamera(); });
     window.addEventListener('pagehide', stopCamera);
   </script>
